@@ -97,3 +97,27 @@ def test_skill_scores_basic():
     tr = [rng.normal(0, 1, 100) for _ in range(200)] + [rng.normal(1.0, 1, 100)]
     p = skill.eb_prob(tr)["prob"]
     assert p[-1] > 0.9 and np.median(p[:-1]) < 0.9 and np.all((p >= 0) & (p <= 1))
+
+
+def test_style_bench_mean_exact_and_style_independent_of_skill():
+    rng = np.random.default_rng(11)
+    for w in (0.3, 0.55, 0.8):
+        for mu in (-0.05, 0.0, 0.15):
+            assert simulate.style_outcomes(rng, 400_000, mu, w).mean() == pytest.approx(mu, abs=0.012)
+    pop = simulate.population_v2({"skilled": 0.5, "loser": 0.5}, 400, 50, seed=3)
+    ws = np.array([t.meta["win_rate"] for t in pop]); sk = np.array([t.kind == "skilled" for t in pop])
+    assert abs(ws[sk].mean() - ws[~sk].mean()) < 0.05
+    obs = np.array([np.mean(simulate.style_outcomes(rng, 5000, 0.0, w) > 0) for w in (0.3, 0.8)])
+    assert obs[0] == pytest.approx(0.3, abs=0.03) and obs[1] == pytest.approx(0.8, abs=0.03)
+
+
+def test_npmle_recovers_mixture_and_is_calibrated():
+    from edgelab import skill
+    rng = np.random.default_rng(12)
+    mus = np.where(rng.random(3000) < 0.1, 0.5, 0.0)
+    tr = [rng.normal(m, 1, 100) for m in mus]
+    r = skill.npmle_prob(tr)
+    p, y = r["prob"], mus > 0
+    hi = p > 0.7
+    assert hi.sum() > 50 and abs(p[hi].mean() - y[hi].mean()) < 0.1
+    assert abs(r["prior"][r["grid"] > 0.25].sum() - 0.1) < 0.04
