@@ -121,3 +121,13 @@ def test_npmle_recovers_mixture_and_is_calibrated():
     hi = p > 0.7
     assert hi.sum() > 50 and abs(p[hi].mean() - y[hi].mean()) < 0.1
     assert abs(r["prior"][r["grid"] > 0.25].sum() - 0.1) < 0.04
+
+
+def test_npmle_threshold_excludes_breakeven_mass():
+    from edgelab import skill
+    rng = np.random.default_rng(13)
+    mus = np.where(rng.random(3000) < 0.1, 0.5, 0.0)
+    tr = [rng.normal(m, 1, 100) for m in mus]
+    p0, p1 = skill.npmle_prob(tr)["prob"], skill.npmle_prob(tr, thr=0.25)["prob"]
+    assert np.all(p1 <= p0 + 1e-12)
+    assert p1[mus == 0].mean() < p0[mus == 0].mean() and p1[mus > 0].mean() > 0.8

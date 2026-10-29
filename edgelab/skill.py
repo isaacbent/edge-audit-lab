@@ -69,17 +69,19 @@ def precision_at_k(score, label, k: int) -> float:
     return float(y[order].mean())
 
 
-def npmle_prob(traders, grid=None, iters=500) -> dict:
-    """P(true mean > 0) under a population prior estimated non-parametrically (Kiefer-Wolfowitz NPMLE on a
+def npmle_prob(traders, grid=None, iters=500, thr=0.0) -> dict:
+    """P(true mean > thr) under a population prior estimated non-parametrically (Kiefer-Wolfowitz NPMLE on a
     grid, EM): xbar_i ~ N(mu_i, se_i^2), mu_i ~ G (discrete on the grid). No normal-shape assumption, so a
-    population that is mostly zero/negative with a small positive group is represented as such."""
+    population that is mostly zero/negative with a small positive group is represented as such.
+    thr > 0 asks for an edge that matters (e.g. above costs) instead of any edge: breakeven traders sit at
+    exactly 0 and leak probability above 0, not above thr."""
     xs = [np.asarray(t, dtype=float) for t in traders]
     xbar = np.array([x.mean() for x in xs])
     se = np.array([max(x.std(ddof=1), 1e-9) / np.sqrt(x.size) for x in xs])
     if grid is None:
         lo, hi = np.quantile(xbar, [0.001, 0.999])
         span = max(hi - lo, 1e-6)
-        grid = np.unique(np.concatenate([np.linspace(lo - 0.1 * span, hi + 0.1 * span, 300), [0.0]]))
+        grid = np.unique(np.concatenate([np.linspace(lo - 0.1 * span, hi + 0.1 * span, 300), [0.0, thr]]))
     lik = _st.norm.pdf(xbar[:, None], loc=grid[None, :], scale=se[:, None]) + 1e-300
     g = np.full(grid.size, 1.0 / grid.size)
     for _ in range(iters):
@@ -88,4 +90,4 @@ def npmle_prob(traders, grid=None, iters=500) -> dict:
         g = post.mean(axis=0)
     post = lik * g
     post /= post.sum(axis=1, keepdims=True)
-    return {"prob": post[:, grid > 0].sum(axis=1), "post_mean": post @ grid, "grid": grid, "prior": g}
+    return {"prob": post[:, grid > thr].sum(axis=1), "post_mean": post @ grid, "grid": grid, "prior": g}
