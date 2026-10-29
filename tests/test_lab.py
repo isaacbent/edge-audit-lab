@@ -195,3 +195,21 @@ def test_mean_se_paired_diff_and_smoke_spec():
     spec = {"population": {"n_traders": 2000}, "seeds": list(range(5000, 5020))}
     sm = study.smoke_spec(spec)
     assert sm["population"]["n_traders"] == 300 and sm["seeds"] == [9990, 9991] and spec["seeds"][0] == 5000
+
+
+def test_bench3_continuous_edges_variable_n_and_optional_correlation():
+    a = simulate.population_v3(1000, (50, 200), seed=21)
+    b = simulate.population_v3(1000, (50, 200), seed=21)
+    assert all(np.array_equal(x.pnl, y.pnl) for x, y in zip(a, b))
+    n = np.array([t.pnl.size for t in a])
+    assert n.min() >= 50 and n.max() <= 200 and len(set(n)) > 50
+    mu = np.array([t.meta["mu"] for t in a])
+    assert len(np.unique(mu)) == len(a) and 0.05 < np.mean(mu > 0.05) < 0.16
+    plain = [t for t in a if t.kind == "plain"]
+    assert all(t.meta["edge"] == pytest.approx(t.meta["mu"]) for t in plain)
+    rng = np.random.default_rng(22)
+    big = simulate.make_bench3_trader(rng, 200_000, 0.1, "plain")
+    assert big.pnl.mean() == pytest.approx(0.1, abs=0.015)
+    c = simulate.population_v3(300, 100, seed=23, corr_sd=0.5)
+    r = np.corrcoef(c[0].pnl[:50], c[1].pnl[:50])
+    assert c[0].pnl.size == 100 and np.isfinite(r).all()

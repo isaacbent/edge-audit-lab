@@ -159,3 +159,70 @@ def population_v2(mix: dict, n_traders: int, n_trades: int, seed: int, **kw) -> 
     for k, c in zip(kinds, counts):
         out += [make_style_trader(k, n_trades, rng, **kw) for _ in range(c)]
     return out
+
+
+# ---------------------------------------------------------------- BENCH-3: continuous edges, variable trade counts
+BENCH3 = {"edge_loc": -0.05, "edge_scale": 0.07, "edge_df": 5, "behaviour": {"plain": 0.80, "martingale": 0.10, "tilt": 0.10}}
+
+
+def make_bench3_trader(rng, n, mu, behaviour, mart_cap=8, tilt_p=0.5, tilt_burst=3, tilt_edge=0.2, shock=None) -> Trader:
+    """One trader with true edge `mu` (R per base-risk trade), own win-rate style (as BENCH-2) and a behaviour:
+    plain, martingale (size doubles after a loss, cap mart_cap) or tilt (after a loss, with prob tilt_p, a burst of
+    tilt_burst trades at -tilt_edge and 1.5x size). `shock` (length n, zero mean) is a common market move added to
+    each trade's R. meta["edge"] = true expected P&L per trade in base-risk units, mean(size * true_mu): the
+    quantity a skill score estimates; "skilled" is decided by comparing it with a threshold fixed in the prereg."""
+    w = float(rng.uniform(*STYLE["win_rate"]))
+    shock = np.zeros(n) if shock is None else np.asarray(shock, dtype=float)
+    if behaviour == "tilt":
+        pnl, size, tmu = [], [], []
+        burst = 0
+        while len(pnl) < n:
+            m, sz = (-tilt_edge, 1.5) if burst > 0 else (mu, 1.0)
+            x = float(style_outcomes(rng, 1, m, w)[0]) + shock[len(pnl)]
+            pnl.append(sz * x); size.append(sz); tmu.append(m)
+            if burst > 0:
+                burst -= 1
+            elif x < 0 and rng.random() < tilt_p:
+                burst = tilt_burst
+        pnl, size, tmu = np.array(pnl), np.array(size), np.array(tmu)
+    else:
+        r = style_outcomes(rng, n, mu, w) + shock
+        size, tmu = np.ones(n), np.full(n, float(mu))
+        if behaviour == "martingale":
+            s = 1.0
+            for i in range(n):
+                size[i] = s
+                s = min(s * 2, mart_cap) if r[i] < 0 else 1.0
+        elif behaviour != "plain":
+            raise ValueError(behaviour)
+        pnl = size * r
+    return Trader(behaviour, pnl, size, tmu, {"win_rate": w, "mu": float(mu), "edge": float(np.mean(size * tmu))})
+
+
+def population_v3(n_traders: int, n_trades, seed: int, edge_loc=BENCH3["edge_loc"], edge_scale=BENCH3["edge_scale"],
+                  edge_df=BENCH3["edge_df"], behaviour=None, corr_sd=0.0, horizon=None, risk=1.0) -> list:
+    """BENCH-3. True edges are continuous: mu_i = edge_loc + edge_scale * Student-t(edge_df). n_trades is an int
+    (same for everyone) or (lo, hi): each trader draws an integer count uniformly in [lo, hi]. corr_sd > 0 adds a
+    shared market factor: trader i trades on consecutive days from a random start in [0, horizon), and every trade
+    on day d gets the same N(0, corr_sd) move (off by default). Trader.kind is the behaviour; use meta["edge"]."""
+    rng = np.random.default_rng(seed)
+    beh = dict(BENCH3["behaviour"] if behaviour is None else behaviour)
+    kinds = list(beh)
+    w = np.array([beh[k] for k in kinds], dtype=float)
+    counts = np.floor(w / w.sum() * n_traders).astype(int)
+    counts[0] += n_traders - counts.sum()
+    lo, hi = (n_trades, n_trades) if np.isscalar(n_trades) else n_trades
+    ns = rng.integers(lo, hi + 1, n_traders)
+    mus = edge_loc + edge_scale * rng.standard_t(edge_df, n_traders)
+    horizon = int(hi) if horizon is None else int(horizon)
+    days = rng.normal(0.0, corr_sd, horizon + int(hi)) if corr_sd > 0 else None
+    starts = rng.integers(0, horizon, n_traders)
+    out, i = [], 0
+    for k, c in zip(kinds, counts):
+        for _ in range(c):
+            shock = None if days is None else days[starts[i]: starts[i] + ns[i]]
+            t = make_bench3_trader(rng, int(ns[i]), mus[i], k, shock=shock)
+            t.pnl = risk * t.pnl
+            out.append(t)
+            i += 1
+    return out
