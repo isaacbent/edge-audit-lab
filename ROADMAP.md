@@ -73,8 +73,9 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    accounts; Cox model with behaviour covariates: size changes, trade frequency, recent drawdown).
 12. Done 2026-10-29: PAYOUT-01 FAILED badly (see README): forecast intervals cover the realised payout in 23 % of
    books instead of 90 %, because replaying survivors' month-1 days carries their luck forward (survivorship bias).
-   Candidate fix (needs the user's OK): PAYOUT-02, same day-resampling structure but each account's days demeaned
-   and re-centred on its calibrated edge estimate (NPMLE posterior mean, SKILL-06), new seeds.
+   PAYOUT-02 (survivorship fix) FAILED too but removed the bias: coverage 0.26 -> 0.77, misses balanced; intervals
+   too narrow with a shared market (month drift not identifiable from one month). Next step needs several months of
+   a real book (estimate market-drift variance across months); no further iteration on the synthetic bench.
    Original plan: PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
    extreme-value tail + simulation of correlated accounts), as a range with probabilities.
 13. Optional RANK-01: Elo / Bradley-Terry ranking of traders with uncertainty, only if a firm asks for a ranking
