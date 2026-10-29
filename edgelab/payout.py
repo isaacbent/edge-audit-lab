@@ -6,10 +6,15 @@ forecast_payouts simulates next month from this month's day P&L by resampling da
   - "independent": each account draws its own past days (ignores the common market)
   - "common_days": one past calendar day is drawn for the whole book and every account replays its own P&L of that
     day (keeps cross-account correlation without modelling it)
+  - "common_days_shrunk": as common_days, but each account's days are re-centred on its NPMLE posterior mean day P&L
+    (prior fitted on ALL accounts, breached ones included), so survivors' month-1 luck is not carried forward
+    (PAYOUT-01 failed on that survivorship bias)
 """
 from __future__ import annotations
 
 import numpy as np
+
+from . import skill
 
 
 def month_payout(start_eq, alive, day_pnl, max_loss=10.0, daily_loss=5.0, split=0.8):
@@ -29,9 +34,13 @@ def forecast_payouts(month1, method: str, sims: int = 500, seed: int = 0, **rule
     eq1 = np.cumsum(month1, axis=1)
     alive = ~(((eq1 <= -rules.get("max_loss", 10.0)) | (month1 <= -rules.get("daily_loss", 5.0))).any(axis=1))
     start = eq1[:, -1]
-    if method == "common_days":
+    if method in ("common_days", "common_days_shrunk"):
+        src = month1
+        if method == "common_days_shrunk":
+            post = skill.npmle_prob(list(month1))["post_mean"]
+            src = month1 - month1.mean(axis=1, keepdims=True) + post[:, None]
         idx = rng.integers(0, d, (sims, d))
-        sim = np.transpose(month1[:, idx], (1, 0, 2))           # (sims, accounts, days)
+        sim = np.transpose(src[:, idx], (1, 0, 2))              # (sims, accounts, days)
     elif method == "independent":
         idx = rng.integers(0, d, (sims, a, d))
         sim = np.take_along_axis(np.broadcast_to(month1, (sims, a, d)), idx, axis=2)
