@@ -10,9 +10,11 @@ ranks as well as anything tested (SKILL-03).
 - SKILL-04 PASSED (BENCH-2): the NPMLE probability of an edge above costs, P(mu > cost), is calibrated (top decile
   0.285 predicted vs 0.279 actual). The over-confidence came from breakeven traders (mu = 0) leaking probability
   above 0. Caveat: SKILL-04 merged diagnosis and fix, and its criterion was SKILL-03's (weaker than the one below).
-- SKILL-05 (diagnostic, BENCH-2, running): threshold vs pooled variance vs t / bootstrap likelihood vs isotonic.
+- SKILL-05 (diagnostic, BENCH-2) done: the threshold P(mu > cost) is the fix; pooled variance, t and bootstrap
+  likelihoods and isotonic add nothing (see README). Candidate for SKILL-06: NPMLE, own variance, normal, P(mu > cost).
 
 ## Phase 1a: infrastructure (next, before any new study)
+Done 2026-10-29 (`edgelab/study.py`, CI, CLAUDE.md rules, post-hoc SE notes for SKILL-02/03):
 1. Pre-registration lock: store the git commit and a hash of `edgelab/` and the study script (plus numpy / scipy
    versions) in the prereg; refuse to run if they differ or if those files have uncommitted changes (`state/` is
    not checked, the run writes there).
@@ -25,6 +27,8 @@ ranks as well as anything tested (SKILL-03).
 5. GitHub Actions running `python3 -m pytest -q` on every push.
 
 ## Phase 1b: BENCH-3
+Done 2026-10-29 (`simulate.population_v3`); skilled = true expected P&L per trade (size included) > threshold
+(user decision, option B); behaviour-adjusted label reported as secondary.
 6. New bench functions (BENCH-1/2 untouched): continuous true edges (skilled = edge > cost, threshold fixed in the
    pre-registration), variable number of trades per trader; cross-trader correlation (shared market days) as an
    option, off by default.
