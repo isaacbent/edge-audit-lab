@@ -89,3 +89,18 @@ def smoke_spec(spec: dict, n_traders: int = 300, n_seeds: int = 2) -> dict:
     s["population"]["n_traders"] = n_traders
     s["seeds"] = list(range(9990, 9990 + n_seeds))
     return s
+
+
+def pooled_ratio_ci(num, den, iters: int = 2000, seed: int = 0) -> dict:
+    """sum(num) / sum(den) over seeds (e.g. true flags / flags), with a 95 % percentile interval from resampling
+    seeds. Seeds with den = 0 stay in (they are part of the population), unlike a mean of per-seed ratios."""
+    num, den = np.asarray(num, dtype=float), np.asarray(den, dtype=float)
+    if den.sum() == 0:
+        return {"ratio": None, "ci95": None, "num": 0, "den": 0}
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, num.size, (iters, num.size))
+    d = den[idx].sum(axis=1)
+    r = num[idx].sum(axis=1)[d > 0] / d[d > 0]
+    lo, hi = np.quantile(r, [0.025, 0.975])
+    return {"ratio": round(float(num.sum() / den.sum()), 4), "ci95": [round(float(lo), 4), round(float(hi), 4)],
+            "num": int(num.sum()), "den": int(den.sum())}

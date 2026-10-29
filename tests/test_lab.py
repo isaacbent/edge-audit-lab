@@ -213,3 +213,11 @@ def test_bench3_continuous_edges_variable_n_and_optional_correlation():
     c = simulate.population_v3(300, 100, seed=23, corr_sd=0.5)
     r = np.corrcoef(c[0].pnl[:50], c[1].pnl[:50])
     assert c[0].pnl.size == 100 and np.isfinite(r).all()
+
+
+def test_pooled_ratio_ci_keeps_empty_seeds():
+    from edgelab import study
+    r = study.pooled_ratio_ci([3, 0, 8, 4], [4, 0, 10, 5])
+    assert r["ratio"] == round(15 / 19, 4) and r["den"] == 19
+    assert r["ci95"][0] <= r["ratio"] <= r["ci95"][1]
+    assert study.pooled_ratio_ci([0, 0], [0, 0])["ratio"] is None
