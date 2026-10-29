@@ -65,7 +65,11 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    Candidate follow-up (needs the user's OK): tilt from the outcome side (worse results right after losses) combined
    with size; Hawkes / frequency needs timestamps (real data).
    Original plan: TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).
-11. SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
+11. Done 2026-10-29: SURVIVAL-01 FAILED narrowly (see README): Cox on the first 10 days ranks breaches with C 0.700
+   (needed lower bound >= 0.70), clearly better than the loss buffer alone (+0.076). Kaplan-Meier gives exact
+   portfolio survival under censoring (usable now). Candidate follow-ups (need the user's OK): later landmark
+   (day 20), skill probability and martingale flag as covariates.
+   Original plan: SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
    accounts; Cox model with behaviour covariates: size changes, trade frequency, recent drawdown).
 12. PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
    extreme-value tail + simulation of correlated accounts), as a range with probabilities.
