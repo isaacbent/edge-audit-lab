@@ -83,25 +83,77 @@ def precision_at_k_ties(score, label, k: int) -> float:
     return float((y[above].sum() + (k - above.sum()) * y[tie].mean()) / k)
 
 
-def npmle_prob(traders, grid=None, iters=500, thr=0.0) -> dict:
+def npmle_prob(traders, grid=None, iters=500, thr=0.0, var="own", lik="normal", boot_b=200, seed=0) -> dict:
     """P(true mean > thr) under a population prior estimated non-parametrically (Kiefer-Wolfowitz NPMLE on a
     grid, EM): xbar_i ~ N(mu_i, se_i^2), mu_i ~ G (discrete on the grid). No normal-shape assumption, so a
     population that is mostly zero/negative with a small positive group is represented as such.
     thr > 0 asks for an edge that matters (e.g. above costs) instead of any edge: breakeven traders sit at
-    exactly 0 and leak probability above 0, not above thr."""
+    exactly 0 and leak probability above 0, not above thr.
+    var: "own" (se_i from the trader's own variance) or "pooled" (one within-trader variance for everyone).
+    lik: "normal", "t" (Student-t, n-1 df, for the uncertainty of se_i) or "boot" (bootstrap-t density per
+    trader, for skewed / fat-tailed trade results)."""
     xs = [np.asarray(t, dtype=float) for t in traders]
+    n = np.array([x.size for x in xs], dtype=float)
     xbar = np.array([x.mean() for x in xs])
-    se = np.array([max(x.std(ddof=1), 1e-9) / np.sqrt(x.size) for x in xs])
+    s2 = np.array([x.var(ddof=1) for x in xs])
+    if var == "pooled":
+        s2 = np.full(s2.size, float(np.average(s2, weights=n - 1)))
+    elif var != "own":
+        raise ValueError(var)
+    se = np.maximum(np.sqrt(s2), 1e-9) / np.sqrt(n)
     if grid is None:
         lo, hi = np.quantile(xbar, [0.001, 0.999])
         span = max(hi - lo, 1e-6)
         grid = np.unique(np.concatenate([np.linspace(lo - 0.1 * span, hi + 0.1 * span, 300), [0.0, thr]]))
-    lik = _st.norm.pdf(xbar[:, None], loc=grid[None, :], scale=se[:, None]) + 1e-300
+    z = (xbar[:, None] - grid[None, :]) / se[:, None]
+    if lik == "normal":
+        lik_m = _st.norm.pdf(z) / se[:, None]
+    elif lik == "t":
+        lik_m = _st.t.pdf(z, df=(n - 1)[:, None]) / se[:, None]
+    elif lik == "boot":
+        lik_m = _boot_t_density(xs, z, boot_b, seed) / se[:, None]
+    else:
+        raise ValueError(lik)
+    lik_m = lik_m + 1e-300
     g = np.full(grid.size, 1.0 / grid.size)
     for _ in range(iters):
-        post = lik * g
+        post = lik_m * g
         post /= post.sum(axis=1, keepdims=True)
         g = post.mean(axis=0)
-    post = lik * g
+    post = lik_m * g
     post /= post.sum(axis=1, keepdims=True)
-    return {"prob": post[:, grid > thr].sum(axis=1), "post_mean": post @ grid, "grid": grid, "prior": g}
+    return {"prob": post[:, grid > thr].sum(axis=1), "post_mean": post @ grid, "grid": grid, "prior": g, "post": post}
+
+
+def _boot_t_density(xs, z, b, seed):
+    """Per trader, density of the bootstrap t statistic (xbar* - xbar) / se* (Gaussian KDE, Silverman bandwidth),
+    evaluated at the rows of z."""
+    rng = np.random.default_rng(seed)
+    out = np.empty_like(z)
+    for i, x in enumerate(xs):
+        r = x[rng.integers(0, x.size, (b, x.size))]
+        sd = np.maximum(r.std(axis=1, ddof=1), 1e-12)
+        tb = (r.mean(axis=1) - x.mean()) / (sd / np.sqrt(x.size))
+        h = max(1.06 * tb.std() * b ** -0.2, 1e-3)
+        out[i] = _st.norm.pdf((z[i][:, None] - tb[None, :]) / h).mean(axis=1) / h
+    return out
+
+
+def isotonic_fit(score, label):
+    """Pool-adjacent-violators fit of P(label | score), non-decreasing. Returns (x knots, y values)."""
+    o = np.argsort(np.asarray(score, dtype=float), kind="mergesort")
+    x = np.asarray(score, dtype=float)[o]
+    blocks = []                     # [sum y, count, max x]
+    for xi, yi in zip(x, np.asarray(label, dtype=float)[o]):
+        blocks.append([yi, 1.0, xi])
+        while len(blocks) > 1 and blocks[-2][0] / blocks[-2][1] >= blocks[-1][0] / blocks[-1][1]:
+            y2, c2, x2 = blocks.pop()
+            blocks[-1][0] += y2; blocks[-1][1] += c2; blocks[-1][2] = x2
+    return np.array([bl[2] for bl in blocks]), np.array([bl[0] / bl[1] for bl in blocks])
+
+
+def isotonic_apply(knots, score):
+    """Step function from isotonic_fit: value of the first block whose max score is >= score."""
+    kx, ky = knots
+    idx = np.minimum(np.searchsorted(kx, np.asarray(score, dtype=float), side="left"), kx.size - 1)
+    return ky[idx]

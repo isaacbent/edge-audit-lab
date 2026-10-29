@@ -139,3 +139,18 @@ def test_precision_at_k_ties_averages_the_tied_group():
     assert skill.precision_at_k_ties([1, 1, 1, 1], [1, 0, 0, 0], 1) == 0.25
     assert skill.precision_at_k_ties([5, 4, 3, 2], [1, 0, 1, 0], 2) == 0.5
     assert skill.precision_at_k_ties([5, 3, 3, 1], [1, 1, 0, 0], 2) == 0.75
+
+
+def test_npmle_variants_and_isotonic():
+    from edgelab import skill
+    rng = np.random.default_rng(14)
+    mus = np.where(rng.random(800) < 0.1, 0.5, 0.0)
+    tr = [rng.normal(m, 1, 80) for m in mus]
+    base = skill.npmle_prob(tr)["prob"]
+    assert np.allclose(base, skill.npmle_prob(tr, var="own", lik="normal")["prob"])
+    for kw in ({"var": "pooled"}, {"lik": "t"}, {"lik": "boot", "boot_b": 100}):
+        p = skill.npmle_prob(tr, **kw)["prob"]
+        assert np.all((p >= 0) & (p <= 1 + 1e-9)) and skill.auc(p, mus > 0) > 0.95
+    knots = skill.isotonic_fit([0.1, 0.2, 0.3, 0.4], [0, 1, 0, 1])
+    assert list(knots[1]) == [0.0, 0.5, 1.0]
+    assert list(skill.isotonic_apply(knots, [0.05, 0.25, 0.3, 0.9])) == [0.0, 0.5, 0.5, 1.0]
