@@ -48,7 +48,7 @@ EXCLUDED = no clear use on trader data (keep excluded unless a firm's question n
 ## Extra candidates (not in the original catalogue, strong fit for trader analysis)
 | Formula | Origin | Use on trader data | Status |
 | --- | --- | --- | --- |
-| Sequential probability ratio test (Wald SPRT) | Quality control, WWII | Decide "skilled / not skilled / keep watching" as trades arrive, with fixed error rates; directly answers "how many trades do we need" | CANDIDATE (strong fit for SKILL-06) |
+| Sequential probability ratio test (Wald SPRT) | Quality control, WWII | Decide "skilled / not skilled / keep watching" as trades arrive, with fixed error rates; directly answers "how many trades do we need" | CANDIDATE (strong fit for SKILL-07) |
 | Bayesian online change-point (Adams-MacKay) | Machine learning | Probability that a trader's behaviour changed at each trade | CANDIDATE (alternative for DRIFT-01) |
 | Beta-binomial model | Biostatistics | Win rate with uncertainty per style; only useful together with payoff size | CANDIDATE (low priority) |
 | Deflated Sharpe ratio | Finance (Bailey, Lopez de Prado) | Correct for how many traders a firm evaluates | PLANNED (copy from the Research Engine) |

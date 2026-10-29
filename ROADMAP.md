@@ -5,39 +5,54 @@ plus how many trades it takes to trust it. Ranking alone is not the differentiat
 ranks as well as anything tested (SKILL-03).
 
 ## Where we are
-- SKILL-01/02/03 done (all FAILED their criteria, see README). Robust findings across all three:
-  challenge rule picks only 12-19 % skilled traders; any serious score picks 2-4x better; win rate is useless once
-  styles differ (AUC 0.50); the NPMLE probability is over-confident (top decile 0.49 predicted vs 0.27 actual).
+- SKILL-01/02/03 FAILED their criteria (see README). Robust findings: the challenge rule picks only 12-19 % skilled
+  traders; any serious score picks 2-4x better; win rate is useless once styles differ (AUC 0.50).
+- SKILL-04 PASSED (BENCH-2): the NPMLE probability of an edge above costs, P(mu > cost), is calibrated (top decile
+  0.285 predicted vs 0.279 actual). The over-confidence came from breakeven traders (mu = 0) leaking probability
+  above 0. Caveat: SKILL-04 merged diagnosis and fix, and its criterion was SKILL-03's (weaker than the one below).
+- SKILL-05 (diagnostic, BENCH-2, running): threshold vs pooled variance vs t / bootstrap likelihood vs isotonic.
 
-## Phase 1: calibration (next)
-1. SKILL-04 diagnosis (no criterion, report only, still pre-registered as a diagnostic):
-   - where the over-confidence comes from: prior mass slightly above 0 assigned to breakeven traders (true mu = 0)?
-     noisy per-trader standard errors with fat tails / martingale variance? normal likelihood for xbar at n = 50-100?
-   - compare on BENCH-2: P(mu > 0) vs P(mu > delta) for a small practical threshold; pooled vs own variance;
-     bootstrap or t likelihood instead of normal.
-2. SKILL-05 (with criterion, decided BEFORE running): the best fix from SKILL-04 on new seeds. Suggested criterion:
-   primary cell (100 trades, edge 0.15 R) |predicted - actual| <= 0.10 in every decile AND AUC within 0.01 of t-stat
-   AND top-5 % precision >= 2x challenge.
-   Stop rule: if SKILL-05 fails, report probabilities only in coarse bands (low / medium / high) that ARE calibrated,
-   and say so; do not keep iterating on the same bench.
+## Phase 1a: infrastructure (next, before any new study)
+1. Pre-registration lock: store the git commit and a hash of `edgelab/` and the study script (plus numpy / scipy
+   versions) in the prereg; refuse to run if they differ or if those files have uncommitted changes (`state/` is
+   not checked, the run writes there).
+2. Uncertainty: report the standard error across seeds; write criteria on paired differences per seed
+   (e.g. AUC(score) - AUC(t-stat) with a 95 % interval), not on bare means.
+   Post-hoc note (verdicts unchanged, SKILL-02/03 stay FAILED): seed standard errors of SKILL-02/03, recomputed
+   with their unchanged code and seeds.
+3. Exploration seeds 9000-9999 only, every attempt logged in the registry; exploration never confirms anything.
+4. `--smoke` mode in every study script: tiny population, no registry writes.
+5. GitHub Actions running `python3 -m pytest -q` on every push.
+
+## Phase 1b: BENCH-3
+6. New bench functions (BENCH-1/2 untouched): continuous true edges (skilled = edge > cost, threshold fixed in the
+   pre-registration), variable number of trades per trader; cross-trader correlation (shared market days) as an
+   option, off by default.
+
+## Phase 1c: calibration on BENCH-3
+7. SKILL-06 (with criterion, new seeds): the best fix from SKILL-04/05 on BENCH-3, BENCH-2 reported as control.
+   Suggested criterion (primary cell): |predicted - actual| <= 0.10 in every decile AND AUC(score) - AUC(t-stat)
+   >= -0.01 (paired, 95 % interval) AND top-5 % precision >= 2x challenge.
+   Stop rule: if SKILL-06 fails, report probabilities only in coarse bands (low / medium / high) that ARE
+   calibrated, and say so; do not keep iterating on the same bench.
 
 ## Phase 2: minimum trades
-3. SKILL-06: for each edge size, how many trades until the calibrated probability separates skilled from lucky
+8. SKILL-07: for each edge size, how many trades until the calibrated probability separates skilled from lucky
    (e.g. recall >= 50 % at precision >= 70 %). Output = the table a firm sees ("with fewer than N trades we abstain").
 
-## Phase 3: other questions a firm asks (only after phase 1 passes)
-4. DRIFT-01: detect the `decaying` kind (edge lost mid-period) with CUSUM / EWMA on trade results; false alarms per
+## Phase 3: other questions a firm asks (only after phase 1c passes)
+9. DRIFT-01: detect the `decaying` kind (edge lost mid-period) with CUSUM / EWMA on trade results; false alarms per
    year vs detection delay.
-5. TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).
-6. SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
+10. TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).
+11. SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
    accounts; Cox model with behaviour covariates: size changes, trade frequency, recent drawdown).
-7. PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
+12. PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
    extreme-value tail + simulation of correlated accounts), as a range with probabilities.
-8. Optional RANK-01: Elo / Bradley-Terry ranking of traders with uncertainty, only if a firm asks for a ranking
+13. Optional RANK-01: Elo / Bradley-Terry ranking of traders with uncertainty, only if a firm asks for a ranking
    for capital allocation (SKILL-03 suggests a calibrated probability already covers most of this).
 
 ## Phase 4: real data (only when a firm shares trades)
-9. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
+14. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
    it retrospectively: score at day 30 vs who was paid / breached later. This is the free 48-hour pilot offered in
    the outreach emails.
 
