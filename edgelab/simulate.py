@@ -267,3 +267,48 @@ def population_tilt(n_traders: int, n_trades, seed: int, size_sigma=0.30, **kw) 
         t.size = t.size * f
         t.pnl = t.pnl * f
     return pop
+
+
+# ---------------------------------------------------------------- BENCH-3S: funded accounts over calendar days
+def account_paths(n_accounts: int, seed: int, horizon=90, rate_median=3.0, rate_sigma=0.5, max_loss=10.0,
+                  daily_loss=5.0, size_sigma=0.30, risk=1.0, **kw) -> list:
+    """Funded accounts followed day by day for `horizon` days, fully observed (no censoring here). Traders are BENCH-3
+    (continuous edge, behaviour plain / martingale / tilt, own win-rate style) with noisy sizes (as BENCH-3T); each
+    trades Poisson(rate) times a day, rate ~ lognormal(log rate_median, rate_sigma). An account breaches on the
+    first trade where cumulative P&L <= -max_loss % (static) or the day's P&L <= -daily_loss %.
+    Returns dicts: trader, day (day index of every trade, 0-based), breach_day (None if alive at horizon), rate."""
+    rng = np.random.default_rng(seed)
+    base = population_v3(n_accounts, 1, seed, **kw)          # draws edges / behaviours; trades regenerated below
+    out = []
+    for t in base:
+        rate = float(rate_median * np.exp(rate_sigma * rng.standard_normal()))
+        per_day = rng.poisson(rate, horizon)
+        n = max(int(per_day.sum()), 1)
+        tr = make_bench3_trader(rng, n, t.meta["mu"], t.kind)
+        f = _lognorm1(rng, n, size_sigma)
+        tr.size, tr.pnl = tr.size * f, risk * tr.pnl * f
+        day = np.repeat(np.arange(horizon), per_day)[:n] if per_day.sum() else np.zeros(1, dtype=int)
+        eq = np.cumsum(tr.pnl)
+        day_start = np.concatenate([[0.0], eq[:-1]])
+        start_of_day = {}
+        for i, d in enumerate(day):
+            start_of_day.setdefault(int(d), day_start[i])
+        intraday = eq - np.array([start_of_day[int(d)] for d in day])
+        bad = np.nonzero((eq <= -max_loss) | (intraday <= -daily_loss))[0]
+        out.append({"trader": tr, "day": day, "breach_day": int(day[bad[0]]) if bad.size else None, "rate": rate})
+    return out
+
+
+def observe_accounts(accounts, seed: int, start_max=120, obs_end=150, dropout=0.005, horizon=90) -> list:
+    """Censoring as a firm sees it: account i starts on calendar day U[0, start_max], observation stops at obs_end;
+    traders also leave on their own (geometric, `dropout` per day). Returns (time, event) per account: time = days
+    until breach or until censoring, event = breach seen."""
+    rng = np.random.default_rng(seed + 3_000_000)
+    out = []
+    for a in accounts:
+        start = int(rng.integers(0, start_max + 1))
+        quit_day = int(rng.geometric(dropout)) if dropout > 0 else horizon + 1
+        cens = min(obs_end - start, quit_day, horizon)
+        b = a["breach_day"]
+        out.append((b + 1, 1) if b is not None and b + 1 <= cens else (cens, 0))
+    return out

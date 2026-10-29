@@ -269,3 +269,22 @@ def test_tilt_bench_and_size_after_loss_test():
     null = [behaviour.size_after_loss_p(rng.normal(0, 1, 100), np.exp(0.3 * rng.standard_normal(100))) for _ in range(400)]
     assert 0.06 < np.mean(np.array(null) < 0.10) < 0.15
     assert behaviour.size_after_loss_p([1, 1, 1, 1], [1, 1, 1, 1]) == 1.0
+
+
+def test_survival_km_cox_concordance():
+    from edgelab import survival
+    # textbook KM: times 1,2,2,3,4 with the 3 censored -> S(2) = 4/5 * 2/4 = 0.4, S(4) = 0.4 * 0 = 0
+    t, e = [1, 2, 2, 3, 4], [1, 1, 0, 0, 1]
+    assert survival.km_survival(t, e, 2) == pytest.approx(0.8 * (1 - 1 / 4))
+    assert survival.km_survival(t, e, 0.5) == 1.0
+    rng = np.random.default_rng(51)
+    x = rng.normal(0, 1, (4000, 2))
+    true_t = rng.exponential(1.0 / np.exp(0.7 * x[:, 0] - 0.4 * x[:, 1]))
+    c = rng.exponential(2.0, 4000)
+    time, event = np.minimum(true_t, c), true_t <= c
+    beta = survival.cox_fit(x, time, event)
+    assert beta == pytest.approx([0.7, -0.4], abs=0.06)
+    assert survival.concordance(x @ beta, time, event) > 0.65
+    assert survival.concordance(rng.normal(size=4000), time, event) == pytest.approx(0.5, abs=0.03)
+    # KM is unbiased under independent censoring
+    assert survival.km_survival(time, event, 0.5) == pytest.approx(np.mean(true_t > 0.5), abs=0.03)
