@@ -131,3 +131,11 @@ def test_npmle_threshold_excludes_breakeven_mass():
     p0, p1 = skill.npmle_prob(tr)["prob"], skill.npmle_prob(tr, thr=0.25)["prob"]
     assert np.all(p1 <= p0 + 1e-12)
     assert p1[mus == 0].mean() < p0[mus == 0].mean() and p1[mus > 0].mean() > 0.8
+
+
+def test_precision_at_k_ties_averages_the_tied_group():
+    from edgelab import skill
+    assert skill.precision_at_k([1, 1, 1, 1], [1, 0, 0, 0], 1) == 1.0
+    assert skill.precision_at_k_ties([1, 1, 1, 1], [1, 0, 0, 0], 1) == 0.25
+    assert skill.precision_at_k_ties([5, 4, 3, 2], [1, 0, 1, 0], 2) == 0.5
+    assert skill.precision_at_k_ties([5, 3, 3, 1], [1, 1, 0, 0], 2) == 0.75

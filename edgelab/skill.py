@@ -69,6 +69,20 @@ def precision_at_k(score, label, k: int) -> float:
     return float(y[order].mean())
 
 
+def precision_at_k_ties(score, label, k: int) -> float:
+    """precision_at_k with ties at the cut-off averaged (expected precision under a random tie-break).
+    precision_at_k breaks ties by list order, which favours whichever kind the population lists first
+    (skilled, in simulate.population*); kept as is so earlier studies reproduce their recorded numbers."""
+    s = np.asarray(score, dtype=float)
+    y = np.asarray(label, dtype=float)
+    if k <= 0 or s.size == 0:
+        return float("nan")
+    k = min(k, s.size)
+    cut = np.sort(s)[::-1][k - 1]
+    above, tie = s > cut, s == cut
+    return float((y[above].sum() + (k - above.sum()) * y[tie].mean()) / k)
+
+
 def npmle_prob(traders, grid=None, iters=500, thr=0.0) -> dict:
     """P(true mean > thr) under a population prior estimated non-parametrically (Kiefer-Wolfowitz NPMLE on a
     grid, EM): xbar_i ~ N(mu_i, se_i^2), mu_i ~ G (discrete on the grid). No normal-shape assumption, so a
