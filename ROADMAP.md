@@ -10,6 +10,7 @@ ranks as well as anything tested (SKILL-03).
 - SKILL-04 PASSED (BENCH-2): the NPMLE probability of an edge above costs, P(mu > cost), is calibrated (top decile
   0.285 predicted vs 0.279 actual). The over-confidence came from breakeven traders (mu = 0) leaking probability
   above 0. Caveat: SKILL-04 merged diagnosis and fix, and its criterion was SKILL-03's (weaker than the one below).
+- SKILL-06 PASSED on BENCH-3 (calibrated and AUC above the t-stat in every cell; weak below ~50 trades).
 - SKILL-05 (diagnostic, BENCH-2) done: the threshold P(mu > cost) is the fix; pooled variance, t and bootstrap
   likelihoods and isotonic add nothing (see README). Candidate for SKILL-06: NPMLE, own variance, normal, P(mu > cost).
 
@@ -34,6 +35,8 @@ Done 2026-10-29 (`simulate.population_v3`); skilled = true expected P&L per trad
    option, off by default.
 
 ## Phase 1c: calibration on BENCH-3
+Done 2026-10-29: SKILL-06 PASSED (see README). Phase 1 complete; open limit: calibration with fewer than ~50 trades
+(decile gap 0.10-0.13 at 30-100 trades), which is phase 2's question.
 7. SKILL-06 (with criterion, new seeds): the best fix from SKILL-04/05 on BENCH-3, BENCH-2 reported as control.
    Suggested criterion (primary cell): |predicted - actual| <= 0.10 in every decile AND AUC(score) - AUC(t-stat)
    >= -0.01 (paired, 95 % interval) AND top-5 % precision >= 2x challenge.
