@@ -312,3 +312,26 @@ def observe_accounts(accounts, seed: int, start_max=120, obs_end=150, dropout=0.
         b = a["breach_day"]
         out.append((b + 1, 1) if b is not None and b + 1 <= cens else (cens, 0))
     return out
+
+
+# ---------------------------------------------------------------- BENCH-3P: a funded book, day by day, with a common market
+def book_days(n_accounts: int, seed: int, days=42, corr_sd=0.2, rate_median=3.0, rate_sigma=0.5, size_sigma=0.30,
+              risk=1.0, **kw):
+    """A firm's funded book: BENCH-3 traders (continuous edge, plain / martingale / tilt, own style, noisy sizes) with
+    Poisson trades per day, and a shared market move: every trade on calendar day d gets the same N(0, corr_sd) R
+    shock (all accounts trade the same days). Returns (day P&L matrix accounts x days in %, kinds)."""
+    rng = np.random.default_rng(seed)
+    f = rng.normal(0.0, corr_sd, days) if corr_sd > 0 else np.zeros(days)
+    base = population_v3(n_accounts, 1, seed, **kw)
+    out = np.zeros((n_accounts, days))
+    for i, t in enumerate(base):
+        rate = float(rate_median * np.exp(rate_sigma * rng.standard_normal()))
+        per_day = rng.poisson(rate, days)
+        n = int(per_day.sum())
+        if n == 0:
+            continue
+        day = np.repeat(np.arange(days), per_day)
+        tr = make_bench3_trader(rng, n, t.meta["mu"], t.kind, shock=f[day])
+        pnl = risk * tr.pnl * _lognorm1(rng, n, size_sigma)
+        out[i] = np.bincount(day, weights=pnl, minlength=days)
+    return out, [t.kind for t in base]

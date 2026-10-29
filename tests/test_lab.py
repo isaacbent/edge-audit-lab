@@ -288,3 +288,18 @@ def test_survival_km_cox_concordance():
     assert survival.concordance(rng.normal(size=4000), time, event) == pytest.approx(0.5, abs=0.03)
     # KM is unbiased under independent censoring
     assert survival.km_survival(time, event, 0.5) == pytest.approx(np.mean(true_t > 0.5), abs=0.03)
+
+
+def test_book_days_and_payout_forecast():
+    from edgelab import payout
+    m, kinds = simulate.book_days(300, seed=61)
+    assert m.shape == (300, 42) and len(kinds) == 300
+    corr = np.corrcoef(m[:, :21].mean(axis=0), m[:, 21:].mean(axis=0))
+    assert np.isfinite(corr).all()
+    eq0, alive = np.zeros(2), np.array([True, True])
+    pnl = np.array([[1.0, 2.0, -1.0], [-6.0, 1.0, 1.0]])
+    total, end, alive_end = payout.month_payout(eq0, alive, pnl)
+    assert total == pytest.approx(0.8 * 2.0) and list(alive_end) == [True, False]
+    a = payout.forecast_payouts(m[:, :21], "independent", sims=200, seed=1)
+    b = payout.forecast_payouts(m[:, :21], "common_days", sims=200, seed=1)
+    assert a.shape == b.shape == (200,) and np.all(a >= 0) and np.std(b) > np.std(a)
