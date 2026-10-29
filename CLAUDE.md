@@ -1,6 +1,6 @@
 # Instructions for Claude (edge-audit-lab)
 
-Reply to the user in Spanish. Read README.md and ROADMAP.md before any work; ROADMAP.md says what comes next.
+Reply to the user in Spanish. Read README.md, ROADMAP.md and docs/FORMULAS.md before any work; ROADMAP.md says what comes next.
 
 ## What this is
 Research lab for Edge Audit (GraniteStats' B2B service for prop firms): tell funded traders with a real edge

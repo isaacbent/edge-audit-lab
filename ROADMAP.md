@@ -44,10 +44,9 @@ ranks as well as anything tested (SKILL-03).
 ## Pieces still to copy from the Research Engine when needed
 - Deflated Sharpe (`research_engine/robustness.dsr`): correct for the number of traders a firm evaluates.
 
-## Background
-- The full catalogue of 26 cross-discipline formulas (Kalman, Hawkes, CUSUM, EVT, Kaplan-Meier, Cox, Buhlmann,
-  James-Stein, Elo, ...) is in the user's Claude Docs document "Catalogo de formulas de prediccion trasladables a
-  finanzas". Only the pieces listed above are planned for Edge Audit.
+## Formula catalogue
+- docs/FORMULAS.md: all 26 catalogue formulas + 4 extra candidates, each marked PLANNED / CANDIDATE / EXCLUDED for
+  trader analysis. Follow its rules: a CANDIDATE becomes a study only with a written case and the user's OK.
 
 ## Not now
 - No product/platform integrations, no UI, no new features before a firm replies (user decision 2026-10-27).
