@@ -85,3 +85,15 @@ def test_registry_chain_and_prereg_rules(tmp_path):
     lines[1] = json.dumps(rec)
     (tmp_path / "r.jsonl").write_text("\n".join(lines) + "\n")
     assert not reg.verify()["ok"]
+
+
+def test_skill_scores_basic():
+    from edgelab import skill
+    assert skill.auc([3, 2, 1], [True, False, False]) == 1.0
+    assert skill.auc([1, 1], [True, False]) == 0.5
+    assert skill.precision_at_k([5, 4, 3, 2], [1, 0, 1, 0], 2) == 0.5
+    assert skill.profit_factor([2, -1, 1]) == 3.0 and skill.win_rate([1, -1, 2, -2]) == 0.5
+    rng = np.random.default_rng(8)
+    tr = [rng.normal(0, 1, 100) for _ in range(200)] + [rng.normal(1.0, 1, 100)]
+    p = skill.eb_prob(tr)["prob"]
+    assert p[-1] > 0.9 and np.median(p[:-1]) < 0.9 and np.all((p >= 0) & (p <= 1))

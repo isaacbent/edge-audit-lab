@@ -20,3 +20,4 @@ a study whose code differs from its pre-registration refuses to run; failed stud
 | Study | Date | Result |
 | --- | --- | --- |
 | SKILL-01 | 2026-10-29 | FAILED the pre-registered criterion (recall 1.7 % < 30 % at 100 trades, edge 0.15 R). Challenge rule: only 12-19 % of passers are skilled; BH flags are 97-100 % precise but recall is low for small edges (38 % at 0.25 R / 100 trades, 80 % at 0.25 R / 200 trades). Placebo: 0 false flags. |
+| SKILL-02 | 2026-10-29 | FAILED the pre-registered criterion: top-5 % precision of the skill probability 0.49 vs challenge 0.14 (passes 2x), but its AUC 0.913 < win rate 0.916. Every graded score beats the challenge rule 2-4x; win rate wins because the bench's noise is symmetric (all traders share one payoff shape), a bench limitation. Skill probability over-confident (top decile 0.71 predicted vs 0.33 actual). |
