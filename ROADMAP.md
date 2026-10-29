@@ -44,6 +44,11 @@ Done 2026-10-29: SKILL-06 PASSED (see README). Phase 1 complete; open limit: cal
    calibrated, and say so; do not keep iterating on the same bench.
 
 ## Phase 2: minimum trades
+Done 2026-10-29: SKILL-07 FAILED (see README). P >= 0.7 is trustworthy only from 150 trades (precision 0.77);
+below that the score is over-confident in its top tail (flagged traders: P about 0.85, precision 0.31-0.69), driven
+by high win-rate styles whose rare large losses are not yet visible. Recall is low (edge > 0.15 R: 45 % at 300 trades).
+Current product answer: abstain below 150 trades. Open question for the user: how to address the small-N tail
+(see the options proposed after SKILL-07) before phase 3.
 8. SKILL-07: for each edge size, how many trades until the calibrated probability separates skilled from lucky
    (e.g. recall >= 50 % at precision >= 70 %). Output = the table a firm sees ("with fewer than N trades we abstain").
 
