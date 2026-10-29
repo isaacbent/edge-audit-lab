@@ -60,7 +60,11 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    Bayesian online change-point (FORMULAS extra candidate).
    Original plan: DRIFT-01: detect the `decaying` kind (edge lost mid-period) with CUSUM / EWMA on trade results; false alarms per
    year vs detection delay.
-10. TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).
+10. Done 2026-10-29: TILT-01 FAILED on tilt only (see README): martingale flagged 99.6 % at 100 trades with 7.8 %
+   false flags; tilt 26 % at 100 trades, 56 % at 200 (weak size signal). Martingale flag usable in the product now.
+   Candidate follow-up (needs the user's OK): tilt from the outcome side (worse results right after losses) combined
+   with size; Hawkes / frequency needs timestamps (real data).
+   Original plan: TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).
 11. SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
    accounts; Cox model with behaviour covariates: size changes, trade frequency, recent drawdown).
 12. PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
