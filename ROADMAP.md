@@ -29,12 +29,25 @@ ranks as well as anything tested (SKILL-03).
 4. DRIFT-01: detect the `decaying` kind (edge lost mid-period) with CUSUM / EWMA on trade results; false alarms per
    year vs detection delay.
 5. TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).
-6. PAYOUT-01: distribution of next-month payouts for a whole funded book (simulation + extreme-value tail).
+6. SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
+   accounts; Cox model with behaviour covariates: size changes, trade frequency, recent drawdown).
+7. PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
+   extreme-value tail + simulation of correlated accounts), as a range with probabilities.
+8. Optional RANK-01: Elo / Bradley-Terry ranking of traders with uncertainty, only if a firm asks for a ranking
+   for capital allocation (SKILL-03 suggests a calibrated probability already covers most of this).
 
 ## Phase 4: real data (only when a firm shares trades)
-7. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
+9. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
    it retrospectively: score at day 30 vs who was paid / breached later. This is the free 48-hour pilot offered in
    the outreach emails.
+
+## Pieces still to copy from the Research Engine when needed
+- Deflated Sharpe (`research_engine/robustness.dsr`): correct for the number of traders a firm evaluates.
+
+## Background
+- The full catalogue of 26 cross-discipline formulas (Kalman, Hawkes, CUSUM, EVT, Kaplan-Meier, Cox, Buhlmann,
+  James-Stein, Elo, ...) is in the user's Claude Docs document "Catalogo de formulas de prediccion trasladables a
+  finanzas". Only the pieces listed above are planned for Edge Audit.
 
 ## Not now
 - No product/platform integrations, no UI, no new features before a firm replies (user decision 2026-10-27).
