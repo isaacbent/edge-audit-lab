@@ -89,15 +89,21 @@ def npmle_prob(traders, grid=None, iters=500, thr=0.0, var="own", lik="normal", 
     population that is mostly zero/negative with a small positive group is represented as such.
     thr > 0 asks for an edge that matters (e.g. above costs) instead of any edge: breakeven traders sit at
     exactly 0 and leak probability above 0, not above thr.
-    var: "own" (se_i from the trader's own variance) or "pooled" (one within-trader variance for everyone).
+    var: "own" (se_i from the trader's own variance), "pooled" (one within-trader variance for everyone) or
+    "moderated" (own variance shrunk toward the population's, more for short records: Smyth 2004; the Student-t
+    likelihood then has d0 + n - 1 df).
     lik: "normal", "t" (Student-t, n-1 df, for the uncertainty of se_i) or "boot" (bootstrap-t density per
     trader, for skewed / fat-tailed trade results)."""
     xs = [np.asarray(t, dtype=float) for t in traders]
     n = np.array([x.size for x in xs], dtype=float)
     xbar = np.array([x.mean() for x in xs])
     s2 = np.array([x.var(ddof=1) for x in xs])
+    df = n - 1
     if var == "pooled":
         s2 = np.full(s2.size, float(np.average(s2, weights=n - 1)))
+    elif var == "moderated":
+        d0, s02 = moderation_prior(s2, n - 1)
+        s2, df = (d0 * s02 + (n - 1) * s2) / (d0 + n - 1), d0 + n - 1
     elif var != "own":
         raise ValueError(var)
     se = np.maximum(np.sqrt(s2), 1e-9) / np.sqrt(n)
@@ -109,7 +115,7 @@ def npmle_prob(traders, grid=None, iters=500, thr=0.0, var="own", lik="normal", 
     if lik == "normal":
         lik_m = _st.norm.pdf(z) / se[:, None]
     elif lik == "t":
-        lik_m = _st.t.pdf(z, df=(n - 1)[:, None]) / se[:, None]
+        lik_m = _st.t.pdf(z, df=np.broadcast_to(df, n.shape)[:, None]) / se[:, None]
     elif lik == "boot":
         lik_m = _boot_t_density(xs, z, boot_b, seed) / se[:, None]
     else:
@@ -123,6 +129,25 @@ def npmle_prob(traders, grid=None, iters=500, thr=0.0, var="own", lik="normal", 
     post = lik_m * g
     post /= post.sum(axis=1, keepdims=True)
     return {"prob": post[:, grid > thr].sum(axis=1), "post_mean": post @ grid, "grid": grid, "prior": g, "post": post}
+
+
+def moderation_prior(s2, d):
+    """Smyth (2004) empirical-Bayes prior for variances: s2_i ~ s0^2 * chi2(d0) / d0 a priori. Moments of log s2_i
+    give d0 (trigamma inversion) and s0^2. d0 = inf (full pooling) when log-variances vary no more than sampling."""
+    from scipy.special import digamma, polygamma
+    z = np.log(np.maximum(np.asarray(s2, dtype=float), 1e-300))
+    d = np.asarray(d, dtype=float)
+    e = z - digamma(d / 2) + np.log(d / 2)
+    excess = np.var(e, ddof=1) - np.mean(polygamma(1, d / 2))
+    if excess <= 0:
+        return np.inf, float(np.exp(e.mean()))
+    lo, hi = 1e-6, 1e6                      # trigamma is decreasing: find x with trigamma(x) = excess
+    for _ in range(200):
+        mid = np.sqrt(lo * hi)
+        lo, hi = (mid, hi) if polygamma(1, mid) > excess else (lo, mid)
+    d0 = 2 * np.sqrt(lo * hi)
+    s02 = float(np.exp(e.mean() - digamma(d0 / 2) + np.log(d0 / 2)))
+    return float(d0), s02
 
 
 def _boot_t_density(xs, z, b, seed):

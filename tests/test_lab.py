@@ -221,3 +221,14 @@ def test_pooled_ratio_ci_keeps_empty_seeds():
     assert r["ratio"] == round(15 / 19, 4) and r["den"] == 19
     assert r["ci95"][0] <= r["ratio"] <= r["ci95"][1]
     assert study.pooled_ratio_ci([0, 0], [0, 0])["ratio"] is None
+
+
+def test_moderation_prior_recovers_variance_prior():
+    from edgelab import skill
+    rng = np.random.default_rng(1)
+    s2 = 2.0 * rng.chisquare(10, 5000) / 10 * rng.chisquare(20, 5000) / 20
+    d0, s02 = skill.moderation_prior(s2, np.full(5000, 20))
+    assert 8 < d0 < 12 and 1.8 < s02 < 2.2
+    tr = [rng.normal(0.3 if i < 50 else 0.0, 1, 40) for i in range(500)]
+    p = skill.npmle_prob(tr, var="moderated", lik="t")["prob"]
+    assert np.all((p >= 0) & (p <= 1 + 1e-9)) and skill.auc(p, np.arange(500) < 50) > 0.8
