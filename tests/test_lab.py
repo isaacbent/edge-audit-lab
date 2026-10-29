@@ -251,3 +251,21 @@ def test_drift_bench_and_detectors():
     assert np.mean(drift.ewma_down(shifted, 0.05, L) >= 100) > 0.9
     zz = drift.standardise([t.pnl for t in pop], 100)
     assert zz.shape == (400, 300)
+
+
+def test_tilt_bench_and_size_after_loss_test():
+    from edgelab import behaviour
+    a = simulate.population_tilt(600, 100, seed=41)
+    b = simulate.population_v3(600, 100, seed=41)
+    assert all(x.meta["edge"] == y.meta["edge"] for x, y in zip(a, b))
+    plain = [t for t in a if t.kind == "plain"]
+    assert np.std(np.log(plain[0].size)) == pytest.approx(0.30, abs=0.08)
+    rng = np.random.default_rng(42)
+    pnl = rng.normal(0, 1, 200)
+    size = np.ones(200); size[1:][pnl[:-1] < 0] = 2.0
+    size *= np.exp(0.3 * rng.standard_normal(200))
+    assert behaviour.size_after_loss_p(pnl, size) < 1e-6
+    assert behaviour.size_ratio_after_loss(pnl, size) == pytest.approx(2.0, rel=0.25)
+    null = [behaviour.size_after_loss_p(rng.normal(0, 1, 100), np.exp(0.3 * rng.standard_normal(100))) for _ in range(400)]
+    assert 0.06 < np.mean(np.array(null) < 0.10) < 0.15
+    assert behaviour.size_after_loss_p([1, 1, 1, 1], [1, 1, 1, 1]) == 1.0

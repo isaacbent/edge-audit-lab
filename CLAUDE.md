@@ -12,8 +12,8 @@ from lucky ones, before a firm scales their capital or pays out. Synthetic data 
 - `state/registry.jsonl` is append-only and hash-chained: never edit or delete lines; `Registry.verify()` must be ok.
 - Failed studies stay in the README table as FAILED, with their numbers. Do not tune on a failed study's seeds.
 - Seeds already used: 1000-1019 (SKILL-01), 2000-2019 (SKILL-02), 3000-3019 (SKILL-03), 4000-4019 (SKILL-04),
-  5000-5019 (SKILL-05), 6000-6019 (SKILL-06), 7000-7019 (SKILL-07), 8000-8019 + 8100-8109 calibration (DRIFT-01),
-  9000-9999 exploration only (used so far: 9000-9009, 9100-9119, 9200-9201, 9300-9304, 9400-9409, 9990-9993 smoke).
+  5000-5019 (SKILL-05), 6000-6019 (SKILL-06), 7000-7019 (SKILL-07), 8000-8019 + 8100-8109 calibration (DRIFT-01), 10000-10019 (TILT-01),
+  9000-9999 exploration only (used so far: 9000-9009, 9100-9119, 9200-9201, 9300-9304, 9400-9409, 9990-9995 smoke).
   Use new ranges.
 - Do not change BENCH-1 (`population`, `make_trader`) or BENCH-2 (`population_v2`, `make_style_trader`) in place:
   past studies must stay reproducible. A new bench = new functions (BENCH-3, ...).

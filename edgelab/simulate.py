@@ -252,3 +252,18 @@ def population_drift(n_traders: int, n_trades: int, seed: int, decay_share=0.5, 
         out.append(Trader("decaying" if decays else "stable", risk * style_outcomes(rng, n_trades, mus, w),
                           np.ones(n_trades), mus, {"mu_pre": float(mu), "tau": tau, "win_rate": w}))
     return out
+
+
+# ---------------------------------------------------------------- BENCH-3T: BENCH-3 with noisy position sizes
+def population_tilt(n_traders: int, n_trades, seed: int, size_sigma=0.30, **kw) -> list:
+    """BENCH-3 (population_v3, same arguments) where every trader's position size also varies for reasons unrelated
+    to their results: size and pnl of each trade are multiplied by an independent mean-1 lognormal(size_sigma)
+    factor (real traders change lot sizes). Without it plain traders would have size exactly 1 and any size change
+    would give martingale / tilt away. meta['edge'] is unchanged (the factor has mean 1 and is independent)."""
+    pop = population_v3(n_traders, n_trades, seed, **kw)
+    rng = np.random.default_rng(seed + 2_000_000)
+    for t in pop:
+        f = _lognorm1(rng, t.pnl.size, size_sigma)
+        t.size = t.size * f
+        t.pnl = t.pnl * f
+    return pop
