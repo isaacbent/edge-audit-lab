@@ -232,3 +232,22 @@ def test_moderation_prior_recovers_variance_prior():
     tr = [rng.normal(0.3 if i < 50 else 0.0, 1, 40) for i in range(500)]
     p = skill.npmle_prob(tr, var="moderated", lik="t")["prob"]
     assert np.all((p >= 0) & (p <= 1 + 1e-9)) and skill.auc(p, np.arange(500) < 50) > 0.8
+
+
+def test_drift_bench_and_detectors():
+    from edgelab import drift
+    pop = simulate.population_drift(400, 400, seed=31)
+    dec = [t for t in pop if t.kind == "decaying"]
+    assert len(dec) == 200 and all(150 <= t.meta["tau"] <= 300 for t in dec)
+    assert all(t.meta["mu_pre"] > 0.10 for t in pop)
+    assert all(t.true_mu[t.meta["tau"]] == -0.05 and t.true_mu[t.meta["tau"] - 1] > 0.10 for t in dec)
+    rng = np.random.default_rng(32)
+    z = rng.normal(0, 1, (2000, 300))
+    h = drift.calibrate(lambda zz, hh: drift.cusum_down(zz, 0.1, hh), z, 0.10, 0.1, 50)
+    assert abs(np.mean(drift.cusum_down(z, 0.1, h) >= 0) - 0.10) < 0.02
+    shifted = z.copy(); shifted[:, 100:] -= 0.5
+    assert np.mean(drift.cusum_down(shifted, 0.1, h) >= 100) > 0.9
+    L = drift.calibrate(lambda zz, ll: drift.ewma_down(zz, 0.05, ll), z, 0.10, 0.1, 10)
+    assert np.mean(drift.ewma_down(shifted, 0.05, L) >= 100) > 0.9
+    zz = drift.standardise([t.pnl for t in pop], 100)
+    assert zz.shape == (400, 300)

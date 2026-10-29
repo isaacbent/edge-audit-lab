@@ -226,3 +226,29 @@ def population_v3(n_traders: int, n_trades, seed: int, edge_loc=BENCH3["edge_loc
             out.append(t)
             i += 1
     return out
+
+
+# ---------------------------------------------------------------- BENCH-3D: funded traders whose edge may stop
+def population_drift(n_traders: int, n_trades: int, seed: int, decay_share=0.5, tau_range=(150, 300), edge_min=0.10,
+                     edge_loc=BENCH3["edge_loc"], edge_scale=BENCH3["edge_scale"], edge_df=BENCH3["edge_df"],
+                     post_mu=-0.05, risk=1.0) -> list:
+    """Monitored funded traders, all with a real edge to start: mu_pre = BENCH-3 edge distribution truncated to
+    > edge_min. A decay_share of them switch to post_mu at trade tau (uniform integer in tau_range, 0-based index of
+    the first post-change trade); the rest keep mu_pre. Own win-rate style (as BENCH-2/3), plain sizing.
+    Trader.kind = "decaying" or "stable"; meta: mu_pre, tau (None for stable), win_rate."""
+    rng = np.random.default_rng(seed)
+    out = []
+    n_decay = int(round(decay_share * n_traders))
+    for i in range(n_traders):
+        mu = -np.inf
+        while mu <= edge_min:
+            mu = edge_loc + edge_scale * rng.standard_t(edge_df)
+        w = float(rng.uniform(*STYLE["win_rate"]))
+        decays = i < n_decay
+        tau = int(rng.integers(tau_range[0], tau_range[1] + 1)) if decays else None
+        mus = np.full(n_trades, float(mu))
+        if decays:
+            mus[tau:] = post_mu
+        out.append(Trader("decaying" if decays else "stable", risk * style_outcomes(rng, n_trades, mus, w),
+                          np.ones(n_trades), mus, {"mu_pre": float(mu), "tau": tau, "win_rate": w}))
+    return out
