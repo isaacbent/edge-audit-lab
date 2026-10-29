@@ -71,7 +71,11 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    (day 20), skill probability and martingale flag as covariates.
    Original plan: SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
    accounts; Cox model with behaviour covariates: size changes, trade frequency, recent drawdown).
-12. PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
+12. Done 2026-10-29: PAYOUT-01 FAILED badly (see README): forecast intervals cover the realised payout in 23 % of
+   books instead of 90 %, because replaying survivors' month-1 days carries their luck forward (survivorship bias).
+   Candidate fix (needs the user's OK): PAYOUT-02, same day-resampling structure but each account's days demeaned
+   and re-centred on its calibrated edge estimate (NPMLE posterior mean, SKILL-06), new seeds.
+   Original plan: PAYOUT-01: distribution of next-month payouts for a whole funded book (Hawkes for clustered activity +
    extreme-value tail + simulation of correlated accounts), as a range with probabilities.
 13. Optional RANK-01: Elo / Bradley-Terry ranking of traders with uncertainty, only if a firm asks for a ranking
    for capital allocation (SKILL-03 suggests a calibrated probability already covers most of this).
