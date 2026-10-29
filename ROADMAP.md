@@ -47,12 +47,13 @@ Done 2026-10-29: SKILL-06 PASSED (see README). Phase 1 complete; open limit: cal
 Done 2026-10-29: SKILL-07 FAILED (see README). P >= 0.7 is trustworthy only from 150 trades (precision 0.77);
 below that the score is over-confident in its top tail (flagged traders: P about 0.85, precision 0.31-0.69), driven
 by high win-rate styles whose rare large losses are not yet visible. Recall is low (edge > 0.15 R: 45 % at 300 trades).
-Current product answer: abstain below 150 trades. Open question for the user: how to address the small-N tail
-(see the options proposed after SKILL-07) before phase 3.
+Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, give the calibrated probability from
+150 trades on. One fix attempt (moderated variance, Smyth 2004) was explored on dev seeds 9400-9409 and dropped
+(precision at 100 trades 0.63 -> 0.68; moderation too weak, d0 about 3); not pre-registered. Phase 2 closed.
 8. SKILL-07: for each edge size, how many trades until the calibrated probability separates skilled from lucky
    (e.g. recall >= 50 % at precision >= 70 %). Output = the table a firm sees ("with fewer than N trades we abstain").
 
-## Phase 3: other questions a firm asks (only after phase 1c passes)
+## Phase 3: other questions a firm asks (next)
 9. DRIFT-01: detect the `decaying` kind (edge lost mid-period) with CUSUM / EWMA on trade results; false alarms per
    year vs detection delay.
 10. TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).

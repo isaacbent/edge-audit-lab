@@ -48,7 +48,9 @@ EXCLUDED = no clear use on trader data (keep excluded unless a firm's question n
 ## Extra candidates (not in the original catalogue, strong fit for trader analysis)
 | Formula | Origin | Use on trader data | Status |
 | --- | --- | --- | --- |
-| Sequential probability ratio test (Wald SPRT) | Quality control, WWII | Decide "skilled / not skilled / keep watching" as trades arrive, with fixed error rates; directly answers "how many trades do we need" | CANDIDATE (strong fit for SKILL-07) |
+| Sequential probability ratio test (Wald SPRT) | Quality control, WWII | Decide "skilled / not skilled / keep watching" as trades arrive, with fixed error rates; directly answers "how many trades do we need" | CANDIDATE, deprioritised: SKILL-07 showed the small-N problem is unseen rare losses, which an SPRT cannot see either |
 | Bayesian online change-point (Adams-MacKay) | Machine learning | Probability that a trader's behaviour changed at each trade | CANDIDATE (alternative for DRIFT-01) |
 | Beta-binomial model | Biostatistics | Win rate with uncertainty per style; only useful together with payoff size | CANDIDATE (low priority) |
 | Deflated Sharpe ratio | Finance (Bailey, Lopez de Prado) | Correct for how many traders a firm evaluates | PLANNED (copy from the Research Engine) |
+| Moderated variance (Smyth 2004, limma) | Genomics | Shrink each trader's variance toward the population's, more for short records | TRIED (dev seeds 9400-9409, SKILL-08 exploration): too weak on heterogeneous traders (d0 about 3); dropped |
+| Style-pooled loss tail | Insurance (credibility by risk class) | Borrow the frequency / size of large losses from traders with a similar observed win rate, so a short record of a high win-rate trader is not trusted before its rare losses appear | CANDIDATE (the SKILL-07 failure mode; best tested on real firm data) |
