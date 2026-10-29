@@ -154,3 +154,44 @@ def test_npmle_variants_and_isotonic():
     knots = skill.isotonic_fit([0.1, 0.2, 0.3, 0.4], [0, 1, 0, 1])
     assert list(knots[1]) == [0.0, 0.5, 1.0]
     assert list(skill.isotonic_apply(knots, [0.05, 0.25, 0.3, 0.9])) == [0.0, 0.5, 0.5, 1.0]
+
+
+def _git_repo(tmp_path):
+    import subprocess
+    run = lambda *a: subprocess.run(["git", *a], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "edgelab").mkdir()
+    (tmp_path / "edgelab" / "a.py").write_text("x = 1\n")
+    (tmp_path / "study.py").write_text("print(1)\n")
+    (tmp_path / "state").mkdir()
+    run("init", "-q"); run("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A")
+    run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init")
+    return run
+
+
+def test_code_lock_refuses_changed_or_uncommitted_code(tmp_path):
+    from edgelab import study
+    run = _git_repo(tmp_path)
+    script = str(tmp_path / "study.py")
+    reg = Registry(str(tmp_path / "state" / "r.jsonl"))
+    pre = reg.prereg("X-01", {"a": 1}, lock=study.code_lock(script, str(tmp_path)))["payload"]
+    assert study.check_lock(pre, script, str(tmp_path))["files_sha256"] == pre["lock"]["files_sha256"]
+    (tmp_path / "state" / "out.log").write_text("running\n")          # outputs do not block a run
+    study.check_lock(pre, script, str(tmp_path))
+    (tmp_path / "edgelab" / "a.py").write_text("x = 2\n")
+    with pytest.raises(SystemExit, match="uncommitted"):
+        study.check_lock(pre, script, str(tmp_path))
+    run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "change")
+    with pytest.raises(SystemExit, match="differ"):
+        study.check_lock(pre, script, str(tmp_path))
+    with pytest.raises(SystemExit, match="no code lock"):
+        study.check_lock(reg.prereg("X-02", {"a": 2})["payload"], script, str(tmp_path))
+
+
+def test_mean_se_paired_diff_and_smoke_spec():
+    from edgelab import study
+    assert study.mean_se([1, 2, 3]) == {"mean": 2.0, "se": 0.5774, "n": 3}
+    d = study.paired_diff([1.0, 2.0, 3.0, 4.0], [0.5, 1.5, 2.5, 3.0])
+    assert d["mean"] == 0.625 and d["ci95"][0] < 0.625 < d["ci95"][1]
+    spec = {"population": {"n_traders": 2000}, "seeds": list(range(5000, 5020))}
+    sm = study.smoke_spec(spec)
+    assert sm["population"]["n_traders"] == 300 and sm["seeds"] == [9990, 9991] and spec["seeds"][0] == 5000

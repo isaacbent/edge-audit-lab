@@ -43,11 +43,14 @@ class Registry:
             f.write(canon(rec) + "\n")
         return rec
 
-    def prereg(self, study_id: str, spec: dict) -> dict:
+    def prereg(self, study_id: str, spec: dict, lock: dict | None = None) -> dict:
+        """lock: study.code_lock(...) of the study script (from SKILL-06 on), checked again before the run."""
         if any(r["kind"] == "prereg" and r["payload"]["id"] == study_id for r in self.records()):
             raise PermissionError(f"{study_id} already pre-registered (specs are never changed)")
-        return self._write({"kind": "prereg", "payload": {"id": study_id, "spec": spec,
-                                                          "spec_hash": hashlib.sha256(canon(spec).encode()).hexdigest()}})
+        payload = {"id": study_id, "spec": spec, "spec_hash": hashlib.sha256(canon(spec).encode()).hexdigest()}
+        if lock is not None:
+            payload["lock"] = lock
+        return self._write({"kind": "prereg", "payload": payload})
 
     def spec_of(self, study_id: str) -> dict:
         for r in self.records():

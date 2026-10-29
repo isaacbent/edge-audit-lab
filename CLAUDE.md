@@ -16,6 +16,11 @@ from lucky ones, before a firm scales their capital or pays out. Synthetic data 
 - Do not change BENCH-1 (`population`, `make_trader`) or BENCH-2 (`population_v2`, `make_style_trader`) in place:
   past studies must stay reproducible. A new bench = new functions (BENCH-3, ...).
 - `python3 -m pytest -q` must pass before every commit.
+- From SKILL-06 on: pre-register with `study.code_lock(__file__)` and call `study.check_lock` before running (refuses
+  changed or uncommitted `edgelab/` / script, or other numpy / scipy / python versions); every study script has a
+  `--smoke` mode (`study.smoke_spec`, no registry writes) that must run before registering.
+- Criteria on paired per-seed differences with standard errors / 95 % intervals (`study.paired_diff`), not bare means.
+- Exploration only on seeds 9000-9999, every attempt logged with `Registry.note`; exploration never confirms.
 - Independent of the Research Engine (isaacbent/isaacbent-research-engine): copy small utilities, never import it,
   never modify that repo from here.
 - Long runs (> 9 min): launch with nohup in the background and poll.
