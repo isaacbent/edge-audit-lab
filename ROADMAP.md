@@ -54,7 +54,11 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    (e.g. recall >= 50 % at precision >= 70 %). Output = the table a firm sees ("with fewer than N trades we abstain").
 
 ## Phase 3: other questions a firm asks (next)
-9. DRIFT-01: detect the `decaying` kind (edge lost mid-period) with CUSUM / EWMA on trade results; false alarms per
+9. Done 2026-10-29: DRIFT-01 FAILED (see README): CUSUM catches 31 % of edge losses within 150 trades at 10 % false
+   alarms (57 % when the edge was > 0.25 R); EWMA worse. Bottleneck: noisy 100-trade baseline. Candidate follow-ups
+   (need the user's OK): baseline from the calibrated skill score / NPMLE posterior instead of the raw warm-up mean,
+   Bayesian online change-point (FORMULAS extra candidate).
+   Original plan: DRIFT-01: detect the `decaying` kind (edge lost mid-period) with CUSUM / EWMA on trade results; false alarms per
    year vs detection delay.
 10. TILT-01: detect `tilt` and `martingale` from size/frequency after losses (CUSUM, Hawkes intensity).
 11. SURVIVAL-01: probability that a funded account is still alive at 30 / 60 days (Kaplan-Meier with censored
