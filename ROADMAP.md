@@ -90,6 +90,11 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    for capital allocation (SKILL-03 suggests a calibrated probability already covers most of this).
 
 ## Phase 4: real data (only when a firm shares trades)
+REAL-01 (2026-10-30, public Hyperliquid / OKX account series, not firm trades) FAILED: probabilities near 0.5 and
+miscalibrated against a market-wide positive drift; ranking slightly below the t-stat; OKX winners reverted.
+Next (needs the user's OK): define outcomes relative to peers (excess over the cross-sectional median) and test on
+data NOT yet seen (outcomes after 2026-10-30, or another untouched package): the 2026-10-30 package has now been
+opened, so any further analysis of it is exploratory, not a confirmation.
 Tooling done 2026-10-30: importer, frozen audit and report (`tools/audit_report.py`), pilot guide `docs/PILOT.md`.
 Column names of real exports still to confirm on the first file.
 14. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
