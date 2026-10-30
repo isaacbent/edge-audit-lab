@@ -19,6 +19,9 @@ a study whose code differs from its pre-registration refuses to run; failed stud
 - `edgelab/registry.py`  pre-registration / results log
 - `edgelab/study.py`     code lock, seed standard errors / paired differences, --smoke helper
 - `tools/skill_power.py`, `skill_rank.py`, `skill_rank_v2.py`, `skill_rank_v3.py`, `skill_diag.py`, `skill_calib_b3.py`, `skill_mintrades.py`  SKILL-01..07 studies; `tools/drift_detect.py` DRIFT-01; `tools/tilt_detect.py` TILT-01; `tools/survival_accounts.py` SURVIVAL-01; `tools/payout_book.py`, `payout_book_v2.py` PAYOUT-01/02
+- `edgelab/importer.py` closed-trade exports (MT5 / cTrader / Match-Trader / generic) -> one table
+- `edgelab/audit.py`    frozen audit: skill probability (abstain < 150 trades) + martingale flag
+- `tools/audit_report.py` pilot report (Markdown + CSV); `docs/PILOT.md` what to ask a firm and how to test it
 - `tests/`               `python3 -m pytest -q`
 
 ## Studies

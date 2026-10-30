@@ -303,3 +303,61 @@ def test_book_days_and_payout_forecast():
     a = payout.forecast_payouts(m[:, :21], "independent", sims=200, seed=1)
     b = payout.forecast_payouts(m[:, :21], "common_days", sims=200, seed=1)
     assert a.shape == b.shape == (200,) and np.all(a >= 0) and np.std(b) > np.std(a)
+
+
+def _export(pop, fmt, size=100000.0):
+    """Write synthetic BENCH-3T traders as a platform-style CSV (money on a `size` account, 1 % risk)."""
+    lines = []
+    if fmt == "mt5":
+        lines.append("Time,Position,Symbol,Type,Volume,Price,S / L,T / P,Time,Price,Commission,Swap,Profit")
+        for t in pop:
+            for i, (p, v) in enumerate(zip(t.pnl, t.size)):
+                lines.append(f"2026.01.01 00:00,{i},EURUSD,buy,{v:.2f},1.1,,,2026.01.{1 + i // 50:02d} {i % 24:02d}:{i % 60:02d}:00,1.1,-0.5,0,{p * size / 100 + 0.5:.2f}")
+    elif fmt == "ctrader":
+        lines.append("Account;ID;Symbol;Opening Direction;Closing Time (UTC);Closing Quantity;Net USD")
+        for a, t in enumerate(pop):
+            for i, (p, v) in enumerate(zip(t.pnl, t.size)):
+                lines.append(f"A{a};{i};EURUSD;Buy;2026-01-01 {i:05d};{v:.2f};{str(round(p * size / 100, 2)).replace('.', ',')}")
+    else:
+        lines.append("Login,ID,Symbol,Volume,Side,Open time,Close time,Commission,Swap,Profit")
+        for a, t in enumerate(pop):
+            for i, (p, v) in enumerate(zip(t.pnl, t.size)):
+                lines.append(f"L{a},{i},EURUSD,{v:.2f},BUY,x,2026-01-01T{i:05d},-1.00,0.50,{p * size / 100 + 0.5:.2f}")
+    return "\n".join(lines) + "\n"
+
+
+def test_importer_platform_formats_roundtrip():
+    from edgelab import importer
+    pop = simulate.population_tilt(3, 60, seed=71)
+    mt5 = importer.read_trades(_export(pop[:1], "mt5"), "mt5", account="123")
+    assert len(mt5) == 60 and mt5[0]["account"] == "123"
+    assert sorted(t["profit"] for t in mt5) == pytest.approx(sorted(pop[0].pnl * 1000), abs=0.02)
+    ct = importer.read_trades(_export(pop, "ctrader"), "ctrader")
+    assert len(ct) == 180 and {t["account"] for t in ct} == {"A0", "A1", "A2"}
+    a1 = sorted(t["profit"] for t in ct if t["account"] == "A1")
+    assert a1 == pytest.approx(sorted(pop[1].pnl * 1000), abs=0.02)
+    mtr = importer.read_trades(_export(pop, "matchtrader"), "matchtrader")
+    assert sorted(t["profit"] for t in mtr if t["account"] == "L2") == pytest.approx(sorted(pop[2].pnl * 1000 - 0.5 + 0.5), abs=0.02)
+    with pytest.raises(ValueError, match="columns not found"):
+        importer.read_trades("a,b\n1,2\n", "generic")
+    assert importer.read_trades("Trader,Exit,PnL\nx,1,5\n", "generic", mapping={"close_time": "Exit"})[0]["profit"] == 5.0
+
+
+def test_audit_report_end_to_end(tmp_path):
+    from edgelab import audit
+    from tools import audit_report
+    pop = simulate.population_tilt(300, 200, seed=72)
+    f = tmp_path / "book.csv"
+    f.write_text(_export(pop, "matchtrader"))
+    assert audit_report.main([str(f), "--account-size", "100000", "--platform", "matchtrader", "--out", str(tmp_path / "r")]) == 0
+    assert (tmp_path / "r.md").read_text().startswith("# Edge Audit")
+    import csv as _csv
+    rows = list(_csv.DictReader(open(tmp_path / "r.csv")))
+    assert len(rows) == 300 and all(r["skill_probability"] != "" for r in rows)
+    kinds = {f"L{i}": t.kind for i, t in enumerate(pop)}
+    flagged = [r["account"] for r in rows if r["martingale_flag"] == "True"]
+    assert np.mean([kinds[a] == "martingale" for a in flagged]) > 0.6
+    assert sum(kinds[r["account"]] == "martingale" and r["martingale_flag"] == "True" for r in rows) >= 0.9 * 30
+    short = audit.audit([{"account": "x", "close_time": str(i), "profit": float((-1) ** i), "volume": 1.0} for i in range(40)]
+                        + [{"account": "y", "close_time": str(i), "profit": 1.0 - 0.9 * (i % 3 == 0), "volume": 1.0} for i in range(40)], 100000)
+    assert all(r["skill_verdict"].startswith("abstain") and r["martingale_flag"] is None for r in short["accounts"])

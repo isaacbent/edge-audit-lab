@@ -82,6 +82,8 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    for capital allocation (SKILL-03 suggests a calibrated probability already covers most of this).
 
 ## Phase 4: real data (only when a firm shares trades)
+Tooling done 2026-10-30: importer, frozen audit and report (`tools/audit_report.py`), pilot guide `docs/PILOT.md`.
+Column names of real exports still to confirm on the first file.
 14. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
    it retrospectively: score at day 30 vs who was paid / breached later. This is the free 48-hour pilot offered in
    the outreach emails.
