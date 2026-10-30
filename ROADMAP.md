@@ -54,7 +54,9 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
    (e.g. recall >= 50 % at precision >= 70 %). Output = the table a firm sees ("with fewer than N trades we abstain").
 
 ## Phase 2b: follow-ups approved 2026-10-30 (user), in this order
-- SKILL-08: a monitoring rule that stays reliable when a firm re-checks the skill probability as trades arrive
+- Done 2026-10-30: SKILL-08 PASSED (see README): monitoring rule = abstain below 150 trades, then flag at two
+  consecutive checkpoints with P >= 0.7 (precision 0.81).
+  Was: SKILL-08: a monitoring rule that stays reliable when a firm re-checks the skill probability as trades arrive
   (SKILL-07: deciding at the first P >= 0.7 dropped precision to 0.55). Synthetic, new seeds.
 - SURVIVAL-02: SURVIVAL-01 with a day-20 landmark and the skill probability and martingale test as covariates.
 

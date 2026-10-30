@@ -22,6 +22,9 @@ and counted in the report; any other unreadable row stops the import with its li
   "abstain" below (SKILL-06 passed, SKILL-07: P >= 0.7 trustworthy from 150 trades).
 - R per account = median loss (accounts with fewer than 5 losses are not scored) (checked on dev seeds 9700-9704 with risk per trade U[0.5, 2] %: precision of P >= 0.7
   0.725 at 150 trades and 0.823 at 300, vs 0.699 / 0.807 with the true R).
+- Monitoring (if the firm re-checks accounts as trades arrive): from 150 trades, re-check every 25 trades and call
+  an account skilled only after two consecutive checks with P >= 0.7 (SKILL-08: precision 0.81). Acting on the first
+  P >= 0.7 while watching from the start is NOT safe (SKILL-07: 0.55).
 - Martingale flag: size-after-loss test + Benjamini-Hochberg q 0.10, accounts with >= 50 trades (TILT-01).
 - Not offered yet: tilt detection, edge-loss alerts (DRIFT-01 weak), payout ranges (PAYOUT-02: centred but too
   narrow), breach-risk ranking (SURVIVAL-01: C 0.70, needs the firm's own outcomes to refit).
