@@ -100,6 +100,10 @@ REAL-02 (registered 2026-10-30, prospective): predictions of 'beats the median o
 structure (same Hyperliquid sample, same OKX leads, data to >= 2027-01-30), check its MANIFESTs, check out the
 REAL-02 registration commit, run `python3 -m tools.real_prospective --evaluate --data <2026-10-30 package>
 --new-data <new package>`.
+REAL-03 (registered 2026-10-30, prospective, same dates and data as REAL-02): do accounts with the lowest relative
+t-stat keep lagging their peers (criterion: at most 30 % of the bottom decile beat the median), plus a median-corrected
+probability; predictions frozen. Evaluate together with REAL-02: `python3 -m tools.real_prospective_v2 --evaluate ...`
+from the REAL-03 registration commit.
 Tooling done 2026-10-30: importer, frozen audit and report (`tools/audit_report.py`), pilot guide `docs/PILOT.md`.
 Column names of real exports still to confirm on the first file.
 14. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
