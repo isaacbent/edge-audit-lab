@@ -58,7 +58,8 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
   consecutive checkpoints with P >= 0.7 (precision 0.81).
   Was: SKILL-08: a monitoring rule that stays reliable when a firm re-checks the skill probability as trades arrive
   (SKILL-07: deciding at the first P >= 0.7 dropped precision to 0.55). Synthetic, new seeds.
-- SURVIVAL-02: SURVIVAL-01 with a day-20 landmark and the skill probability and martingale test as covariates.
+- Done 2026-10-30: SURVIVAL-02 PASSED (see README): C 0.710 at day 20.
+  Was: SURVIVAL-02: SURVIVAL-01 with a day-20 landmark and the skill probability and martingale test as covariates.
 
 ## Phase 3: other questions a firm asks (next)
 9. Done 2026-10-29: DRIFT-01 FAILED (see README): CUSUM catches 31 % of edge losses within 150 trades at 10 % false
