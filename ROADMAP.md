@@ -95,6 +95,11 @@ miscalibrated against a market-wide positive drift; ranking slightly below the t
 Next (needs the user's OK): define outcomes relative to peers (excess over the cross-sectional median) and test on
 data NOT yet seen (outcomes after 2026-10-30, or another untouched package): the 2026-10-30 package has now been
 opened, so any further analysis of it is exploratory, not a confirmation.
+REAL-02 (registered 2026-10-30, prospective): predictions of 'beats the median of its peers' over 2026-10-30 to
+2027-01-30 frozen today (sha256 in the registry). TO DO after 2027-01-30: download a new package with the same
+structure (same Hyperliquid sample, same OKX leads, data to >= 2027-01-30), check its MANIFESTs, check out the
+REAL-02 registration commit, run `python3 -m tools.real_prospective --evaluate --data <2026-10-30 package>
+--new-data <new package>`.
 Tooling done 2026-10-30: importer, frozen audit and report (`tools/audit_report.py`), pilot guide `docs/PILOT.md`.
 Column names of real exports still to confirm on the first file.
 14. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
