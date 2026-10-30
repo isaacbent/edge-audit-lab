@@ -17,6 +17,12 @@ Check the first lines of each file first: if a column is not found the error lis
 written without real files. Rows that are not trades (totals, balance / deposit rows, MT5 entry-in deals) are skipped
 and counted in the report; any other unreadable row stops the import with its line number.
 
+## What the verdicts do and do not say
+- "skilled": P >= 0.7, right about 8 times in 10 on synthetic books (SKILL-07 / SKILL-08). Use it to pick who to scale.
+- Not flagged does NOT mean not skilled: the rule catches about 1 in 8 traders whose edge is just above costs and
+  about half of those with a large edge (> 0.15 R) by 300 trades. "no evidence of edge" (P < 0.2) and "uncertain" are
+  not validated as negative verdicts; never present them as "this trader has no skill".
+
 ## What is frozen (do not change for a pilot)
 - Skill: P(edge > 0.05 R) with the NPMLE population prior fitted on the firm's own accounts; shown from 150 trades,
   "abstain" below (SKILL-06 passed, SKILL-07: P >= 0.7 trustworthy from 150 trades).
@@ -31,6 +37,6 @@ and counted in the report; any other unreadable row stops the import with its li
 
 ## Retrospective test (the free 48-hour pilot)
 Score every account on trades up to a cut-off date (e.g. day 30 of funding), freeze the report, then compare with
-outcomes after the cut-off: share paid / breached by skill verdict (skilled / uncertain / unlikely / abstain) and by
+outcomes after the cut-off: share paid / breached by skill verdict (skilled / uncertain / no evidence of edge / abstain) and by
 martingale flag. Pre-register this comparison (Registry.prereg) before opening the outcome file: same rules as the
 synthetic studies.

@@ -65,7 +65,7 @@ def audit(trades: list) -> dict:
         elif n[i] < MIN_TRADES_SKILL:
             verdict = f"abstain (< {MIN_TRADES_SKILL} trades)"
         else:
-            verdict = "skilled (P >= 0.7)" if prob[i] >= FLAG_P else ("unlikely" if prob[i] < 0.2 else "uncertain")
+            verdict = "skilled (P >= 0.7)" if prob[i] >= FLAG_P else ("no evidence of edge (P < 0.2)" if prob[i] < 0.2 else "uncertain")
         shown = verdict[:7] != "abstain"
         if eligible[i]:
             mg = "FLAG" if flags[i] else "-"

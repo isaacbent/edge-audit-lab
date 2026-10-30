@@ -43,6 +43,9 @@ def markdown(res: dict, sources: list, skipped: dict) -> str:
              f"- Skill probability: chance that the account's real edge is above {fz['threshold_R']} R per trade on top "
              "of costs, estimated against this book's own population. Validated on synthetic books only (SKILL-06/07); "
              f"below {fz['min_trades_skill']} trades the record is too short and we abstain.",
+             "- A skilled verdict is right about 8 times in 10 on synthetic books. NOT being flagged does not mean no "
+             "skill: many traders with a small real edge are never flagged, so 'uncertain' and 'no evidence of edge' "
+             "are not negative verdicts.",
              "- Martingale flag: position size rises after losses far more than after wins. On synthetic books it "
              "caught 99.5 % of martingale traders at 50 trades (99.6 % at 100), with about 8 % of flags false. "
              "Tilt is NOT reliably detected yet.", "",
