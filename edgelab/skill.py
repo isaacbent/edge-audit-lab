@@ -182,3 +182,30 @@ def isotonic_apply(knots, score):
     kx, ky = knots
     idx = np.minimum(np.searchsorted(kx, np.asarray(score, dtype=float), side="left"), kx.size - 1)
     return ky[idx]
+
+
+def npmle_summary(xbar, se, thr=0.0, grid=None, iters=500) -> dict:
+    """npmle_prob from per-account summaries (estimate xbar_i, standard error se_i) instead of trade lists: for
+    series that are not trade lists (daily or irregular account returns, REAL-01). Same grid and EM as npmle_prob."""
+    xbar = np.asarray(xbar, dtype=float)
+    se = np.maximum(np.asarray(se, dtype=float), 1e-12)
+    if grid is None:
+        lo, hi = np.quantile(xbar, [0.001, 0.999])
+        span = max(hi - lo, 1e-9)
+        grid = np.unique(np.concatenate([np.linspace(lo - 0.1 * span, hi + 0.1 * span, 300), [0.0, thr]]))
+    lik = _st.norm.pdf((xbar[:, None] - grid[None, :]) / se[:, None]) / se[:, None] + 1e-300
+    g = np.full(grid.size, 1.0 / grid.size)
+    for _ in range(iters):
+        post = lik * g
+        post /= post.sum(axis=1, keepdims=True)
+        g = post.mean(axis=0)
+    post = lik * g
+    post /= post.sum(axis=1, keepdims=True)
+    return {"prob": post[:, grid > thr].sum(axis=1), "post_mean": post @ grid, "grid": grid, "prior": g, "post": post}
+
+
+def predictive_positive(post, grid, se_future) -> np.ndarray:
+    """P(the future sample mean > 0) for each account: posterior over the true mean (rows of post on grid) combined
+    with the noise of a future estimate whose standard error is se_future."""
+    se_f = np.maximum(np.asarray(se_future, dtype=float), 1e-12)
+    return (post * _st.norm.cdf(np.asarray(grid)[None, :] / se_f[:, None])).sum(axis=1)

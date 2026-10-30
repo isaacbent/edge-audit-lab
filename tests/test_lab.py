@@ -398,3 +398,32 @@ def test_importer_review_regressions():
     gaps = [dict(x, volume=None if (x["account"] == "a1" and x["close_time"] % 2) else x["volume"]) for x in big]
     r1 = [r for r in audit.audit(gaps)["accounts"] if r["account"] == "a1"][0]
     assert r1["martingale"] == "not checked (missing sizes)" and r1["martingale_flag"] is None
+
+
+def test_realdata_parsers_and_summary_npmle():
+    from edgelab import realdata, skill
+    ts = [1_700_000_000_000 + i * 2 * realdata.DAY_MS for i in range(6)]
+    av = [1000, 1100, 50, 1200, 1300, 1250]
+    pnl = [0, 100, 110, 160, 260, 210]
+    port = [["day", {}], ["allTime", {"accountValueHistory": [[t, str(v)] for t, v in zip(ts, av)],
+                                      "pnlHistory": [[t, str(p)] for t, p in zip(ts, pnl)], "vlm": "0"}]]
+    s = realdata.hl_intervals(port)
+    assert list(np.round(s["r"], 4)) == [0.1, round(10 / 1100, 4), round(100 / 1200, 4), round(-50 / 1300, 4)]
+    assert list(s["dt"]) == [2.0] * 4                                  # 50 -> 1200 dropped: start value < 100
+    pre, post = realdata.split(s, ts[3])
+    assert pre["r"].size == 2 and post["r"].size == 2
+    rows = [{"beginTs": str(ts[i]), "pnl": "0", "pnlRatio": str(x)} for i, x in enumerate([0.0, 0.1, 0.21])][::-1]
+    o = realdata.okx_daily({"data": rows})
+    assert np.allclose(o["r"], [0.1, 0.1]) and np.allclose(o["dt"], [2.0, 2.0])
+    d = realdata.drift([0.02, 0.04, 0.06], [1, 2, 3])
+    assert d["mu"] == pytest.approx(0.02) and d["se"] == pytest.approx(0.0, abs=1e-12)
+    rng = np.random.default_rng(81)
+    mu = np.where(rng.random(3000) < 0.1, 0.5, 0.0); se = np.full(3000, 0.2)
+    x = mu + rng.normal(0, 0.2, 3000)
+    r = skill.npmle_summary(x, se, thr=0.25)                          # point mass at exactly 0: use a threshold (SKILL-04)
+    hi = r["prob"] > 0.7
+    assert abs(r["prob"][hi].mean() - (mu[hi] > 0).mean()) < 0.1
+    pp = skill.predictive_positive(r["post"], r["grid"], np.full(3000, 0.2))
+    fut = mu + rng.normal(0, 0.2, 3000)
+    dec = np.minimum((np.argsort(np.argsort(pp)) * 10) // 3000, 9)
+    assert max(abs(pp[dec == k].mean() - (fut[dec == k] > 0).mean()) for k in range(10)) < 0.08
