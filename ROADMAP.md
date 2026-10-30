@@ -53,6 +53,11 @@ Decision (user, 2026-10-29): option A. Product rule = abstain below 150 trades, 
 8. SKILL-07: for each edge size, how many trades until the calibrated probability separates skilled from lucky
    (e.g. recall >= 50 % at precision >= 70 %). Output = the table a firm sees ("with fewer than N trades we abstain").
 
+## Phase 2b: follow-ups approved 2026-10-30 (user), in this order
+- SKILL-08: a monitoring rule that stays reliable when a firm re-checks the skill probability as trades arrive
+  (SKILL-07: deciding at the first P >= 0.7 dropped precision to 0.55). Synthetic, new seeds.
+- SURVIVAL-02: SURVIVAL-01 with a day-20 landmark and the skill probability and martingale test as covariates.
+
 ## Phase 3: other questions a firm asks (next)
 9. Done 2026-10-29: DRIFT-01 FAILED (see README): CUSUM catches 31 % of edge losses within 150 trades at 10 % false
    alarms (57 % when the edge was > 0.25 R); EWMA worse. Bottleneck: noisy 100-trade baseline. Candidate follow-ups
