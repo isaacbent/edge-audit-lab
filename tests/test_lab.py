@@ -312,17 +312,17 @@ def _export(pop, fmt, size=100000.0):
         lines.append("Time,Position,Symbol,Type,Volume,Price,S / L,T / P,Time,Price,Commission,Swap,Profit")
         for t in pop:
             for i, (p, v) in enumerate(zip(t.pnl, t.size)):
-                lines.append(f"2026.01.01 00:00,{i},EURUSD,buy,{v:.2f},1.1,,,2026.01.{1 + i // 50:02d} {i % 24:02d}:{i % 60:02d}:00,1.1,-0.5,0,{p * size / 100 + 0.5:.2f}")
+                lines.append(f"2026.01.01 00:00,{i},EURUSD,buy,{v:.2f},1.1,,,2026.01.01 {i // 60:02d}:{i % 60:02d}:00,1.1,-0.5,0,{p * size / 100 + 0.5:.2f}")
     elif fmt == "ctrader":
         lines.append("Account;ID;Symbol;Opening Direction;Closing Time (UTC);Closing Quantity;Net USD")
         for a, t in enumerate(pop):
             for i, (p, v) in enumerate(zip(t.pnl, t.size)):
-                lines.append(f"A{a};{i};EURUSD;Buy;2026-01-01 {i:05d};{v:.2f};{str(round(p * size / 100, 2)).replace('.', ',')}")
+                lines.append(f"A{a};{i};EURUSD;Buy;2026-01-01 {i // 60:02d}:{i % 60:02d}:00;{v:.2f};{str(round(p * size / 100, 2)).replace('.', ',')}")
     else:
         lines.append("Login,ID,Symbol,Volume,Side,Open time,Close time,Commission,Swap,Profit")
         for a, t in enumerate(pop):
             for i, (p, v) in enumerate(zip(t.pnl, t.size)):
-                lines.append(f"L{a},{i},EURUSD,{v:.2f},BUY,x,2026-01-01T{i:05d},-1.00,0.50,{p * size / 100 + 0.5:.2f}")
+                lines.append(f"L{a},{i},EURUSD,{v:.2f},BUY,x,2026-01-01T{i // 3600:02d}:{i // 60 % 60:02d}:{i % 60:02d},-1.00,0.50,{p * size / 100 + 0.5:.2f}")
     return "\n".join(lines) + "\n"
 
 
@@ -340,7 +340,7 @@ def test_importer_platform_formats_roundtrip():
     assert sorted(t["profit"] for t in mtr if t["account"] == "L2") == pytest.approx(sorted(pop[2].pnl * 1000 - 0.5 + 0.5), abs=0.02)
     with pytest.raises(ValueError, match="columns not found"):
         importer.read_trades("a,b\n1,2\n", "generic")
-    assert importer.read_trades("Trader,Exit,PnL\nx,1,5\n", "generic", mapping={"close_time": "Exit"})[0]["profit"] == 5.0
+    assert importer.read_trades("Trader,Exit,PnL\nx,2024-01-01 10:00:00,5\n", "generic", mapping={"close_time": "Exit"})[0]["profit"] == 5.0
 
 
 def test_audit_report_end_to_end(tmp_path):
@@ -349,7 +349,7 @@ def test_audit_report_end_to_end(tmp_path):
     pop = simulate.population_tilt(300, 200, seed=72)
     f = tmp_path / "book.csv"
     f.write_text(_export(pop, "matchtrader"))
-    assert audit_report.main([str(f), "--account-size", "100000", "--platform", "matchtrader", "--out", str(tmp_path / "r")]) == 0
+    assert audit_report.main([str(f), "--platform", "matchtrader", "--out", str(tmp_path / "r")]) == 0
     assert (tmp_path / "r.md").read_text().startswith("# Edge Audit")
     import csv as _csv
     rows = list(_csv.DictReader(open(tmp_path / "r.csv")))
@@ -358,6 +358,43 @@ def test_audit_report_end_to_end(tmp_path):
     flagged = [r["account"] for r in rows if r["martingale_flag"] == "True"]
     assert np.mean([kinds[a] == "martingale" for a in flagged]) > 0.6
     assert sum(kinds[r["account"]] == "martingale" and r["martingale_flag"] == "True" for r in rows) >= 0.9 * 30
-    short = audit.audit([{"account": "x", "close_time": str(i), "profit": float((-1) ** i), "volume": 1.0} for i in range(40)]
-                        + [{"account": "y", "close_time": str(i), "profit": 1.0 - 0.9 * (i % 3 == 0), "volume": 1.0} for i in range(40)], 100000)
-    assert all(r["skill_verdict"].startswith("abstain") and r["martingale_flag"] is None for r in short["accounts"])
+    short = audit.audit([{"account": "x", "close_time": i, "profit": float((-1) ** i), "volume": 1.0} for i in range(40)]
+                        + [{"account": "y", "close_time": i, "profit": -2.0 + 3.0 * (i % 3 == 0), "volume": 1.0} for i in range(40)])
+    assert all(r["skill_verdict"] == "abstain (< 150 trades)" and r["martingale_flag"] is None for r in short["accounts"])
+
+
+
+def test_importer_review_regressions():
+    """Defects found by the independent review of the pilot tooling (2026-10-30)."""
+    from edgelab import audit, importer
+    num = importer.parse_number
+    assert num("(12.50)") == -12.5 and num("-$5.00") == -5.0 and num("12.50 USD") == 12.5 and num("\u221212.5") == -12.5
+    assert num("1.234,56") == 1234.56 and num("1,234.56") == 1234.56 and num("1,234") == 1234.0 and num("12,5") == 12.5
+    with pytest.raises(ValueError):
+        num("n/a")
+    with pytest.raises(ValueError):
+        num("inf")
+    txt = "Account,Close time,Profit\nA,2024-01-01 10:00:00,(12.50)\nA,2024-01-02 10:00:00,20.00\nA,2024-01-03 10:00:00,-$5.00\nTotal,,2.50\n,,2.50\n"
+    t = importer.read_trades(txt)
+    assert [x["profit"] for x in t] == [-12.5, 20.0, -5.0] and importer.read_trades.skipped["summary"] == 2
+    with pytest.raises(ValueError, match="line 2"):
+        importer.read_trades("Account,Close time,Profit\nA,2024-01-01 10:00:00,abc\n")
+    eu = "Account;Close time;Profit\nA;02.01.2024 10:00;1.234,56\nA;01.02.2024 10:00;-10,5\nA;15.01.2024 10:00;3\n"
+    t = importer.read_trades(eu)
+    assert [x["profit"] for x in t] == [1234.56, 3.0, -10.5]          # sorted as dates: 2 Jan, 15 Jan, 1 Feb
+    t = importer.read_trades("Account,Close time,Net P&L,Commission\nA,2024-01-01 10:00:00,10,-2\n", mapping={"profit": "Net P&L"})
+    assert t[0]["profit"] == 10.0
+    t = importer.read_trades("Account,Close time,Profit,Commission\nA,2024-01-01 10:00:00,10,-2\n")
+    assert t[0]["profit"] == 8.0
+    t = importer.read_trades("Account,Close time,Type,Profit,Volume\nA,2024-01-01 09:00:00,balance,100000,\nA,2024-01-01 10:00:00,buy,5,0.1\nA,2024-01-01 11:00:00,sell,-5,\n")
+    assert len(t) == 2 and t[1]["volume"] is None and importer.read_trades.skipped["non_trade"] == 1
+    big = [{"account": f"a{k}", "close_time": i, "profit": float(np.sin(i * (k + 1)) or 0.1), "volume": 1.0}
+           for k in range(40) for i in range(200)]
+    res = audit.audit(big + [{"account": "tiny", "close_time": 0, "profit": 1.0, "volume": 1.0}])
+    assert res["book"]["accounts_scored"] == 40
+    assert [r["skill_verdict"] for r in res["accounts"] if r["account"] == "tiny"] == ["abstain (fewer than 5 losses: no R scale)"]
+    one = audit.audit([x for x in big if x["account"] == "a0"])
+    assert one["accounts"][0]["skill_verdict"] == "abstain (needs >= 2 accounts with an R scale in the file)"
+    gaps = [dict(x, volume=None if (x["account"] == "a1" and x["close_time"] % 2) else x["volume"]) for x in big]
+    r1 = [r for r in audit.audit(gaps)["accounts"] if r["account"] == "a1"][0]
+    assert r1["martingale"] == "not checked (missing sizes)" and r1["martingale_flag"] is None

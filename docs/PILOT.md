@@ -9,15 +9,18 @@
 
 ## Run
 ```
-python3 -m tools.audit_report exports/*.csv --account-size 100000 --platform matchtrader --out reports/firm_x
+python3 -m tools.audit_report exports/*.csv --platform matchtrader --out reports/firm_x
 ```
 Check the first lines of each file first: if a column is not found the error lists the header; map it with
-`--map profit="Net USD" --map close_time="Closing Time (UTC)"`. Column presets were written without real files.
+`--map profit="Net USD" --map close_time="Closing Time (UTC)"`; `--decimal ,` for European number formats,
+`--gross` when profit excludes commission / swap, `--time-format` when dates are not recognised. Column presets were
+written without real files. Rows that are not trades (totals, balance / deposit rows, MT5 entry-in deals) are skipped
+and counted in the report; any other unreadable row stops the import with its line number.
 
 ## What is frozen (do not change for a pilot)
 - Skill: P(edge > 0.05 R) with the NPMLE population prior fitted on the firm's own accounts; shown from 150 trades,
   "abstain" below (SKILL-06 passed, SKILL-07: P >= 0.7 trustworthy from 150 trades).
-- R per account = median loss (checked on dev seeds 9700-9704 with risk per trade U[0.5, 2] %: precision of P >= 0.7
+- R per account = median loss (accounts with fewer than 5 losses are not scored) (checked on dev seeds 9700-9704 with risk per trade U[0.5, 2] %: precision of P >= 0.7
   0.725 at 150 trades and 0.823 at 300, vs 0.699 / 0.807 with the true R).
 - Martingale flag: size-after-loss test + Benjamini-Hochberg q 0.10, accounts with >= 50 trades (TILT-01).
 - Not offered yet: tilt detection, edge-loss alerts (DRIFT-01 weak), payout ranges (PAYOUT-02: centred but too
