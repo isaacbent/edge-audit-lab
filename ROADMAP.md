@@ -104,6 +104,10 @@ REAL-03 (registered 2026-10-30, prospective, same dates and data as REAL-02): do
 t-stat keep lagging their peers (criterion: at most 30 % of the bottom decile beat the median), plus a median-corrected
 probability; predictions frozen. Evaluate together with REAL-02: `python3 -m tools.real_prospective_v2 --evaluate ...`
 from the REAL-03 registration commit.
+REAL-04 (laggards, 2026-10-31) NOT VALID: gate error on HLS-04 portfolios (lab's protocol error, no result computed);
+re-run as a new id with the corrected gate pending the user's OK. REAL-05 (trade-level product, 2026-10-31) FAILED:
+the skill probability is rarely confident and miscalibrated on real trades; martingale / tilt flags point the right
+way but are not significant.
 Tooling done 2026-10-30: importer, frozen audit and report (`tools/audit_report.py`), pilot guide `docs/PILOT.md`.
 Column names of real exports still to confirm on the first file.
 14. Import an anonymised trade export (MT5 / cTrader / Match-Trader CSV), run the frozen calibrated score, and test
