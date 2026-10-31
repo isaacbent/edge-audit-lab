@@ -105,7 +105,9 @@ t-stat keep lagging their peers (criterion: at most 30 % of the bottom decile be
 probability; predictions frozen. Evaluate together with REAL-02: `python3 -m tools.real_prospective_v2 --evaluate ...`
 from the REAL-03 registration commit.
 REAL-04 (laggards, 2026-10-31) NOT VALID: gate error on HLS-04 portfolios (lab's protocol error, no result computed);
-re-run as a new id with the corrected gate pending the user's OK. REAL-05 (trade-level product, 2026-10-31) FAILED:
+re-run as a new id with the corrected gate pending the user's OK. Done as REAL-06 (2026-10-31): FAILED the 0.30 threshold
+but laggard persistence is real on all three Hyperliquid sets (bottom decile beats the median 35-38 % of the time vs
+50 % by chance) and regime-dependent (absent at the 2025-10 cut). Winners do not persist. REAL-05 (trade-level product, 2026-10-31) FAILED:
 the skill probability is rarely confident and miscalibrated on real trades; martingale / tilt flags point the right
 way but are not significant.
 Tooling done 2026-10-30: importer, frozen audit and report (`tools/audit_report.py`), pilot guide `docs/PILOT.md`.
