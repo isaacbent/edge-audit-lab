@@ -130,7 +130,7 @@ def run_l3(root):
     return res
 
 
-def run_l1(root):
+def run_l1(root, big=-2.0, stat="mean"):
     accts, trunc = hl3_accounts(root)
     rows = []
     for a in accts:
@@ -146,13 +146,13 @@ def run_l1(root):
     lam, Ls = {}, {}
     for b in range(10):
         allr = np.concatenate([rows[i]["r"] for i in np.nonzero(band == b)[0]])
-        big = allr[allr < -2]
-        lam[b] = big.size / allr.size
-        Ls[b] = float(-big.mean()) if big.size else 0.0
-    out = {"accounts": len(rows), "truncated_excluded": trunc,
+        bl = allr[allr < big]
+        lam[b] = bl.size / allr.size
+        Ls[b] = float(-(bl.mean() if stat == "mean" else np.median(bl))) if bl.size else 0.0
+    out = {"accounts": len(rows), "truncated_excluded": trunc, "big_loss_R": big, "size_stat": stat,
            "bands": [[round(float(np.median(wr[band == b])), 3), round(lam[b], 4), round(Ls[b], 2)] for b in range(10)]}
     xbar = np.array([x["r"].mean() for x in rows]); n = np.array([x["r"].size for x in rows])
-    k = np.array([np.sum(x["r"] < -2) for x in rows])
+    k = np.array([np.sum(x["r"] < big) for x in rows])
     debt = np.maximum(0, np.array([lam[b] for b in band]) * n - k) * np.array([Ls[b] for b in band])
     adj = xbar - debt / n
     se = np.array([x["r"].std(ddof=1) / np.sqrt(x["r"].size) for x in rows])
@@ -246,8 +246,10 @@ def main(argv=None):
     ap.add_argument("--curves", nargs="*")
     ap.add_argument("--log", action="store_true")
     ap.add_argument("--note", default="")
+    ap.add_argument("--big", type=float, default=-2.0)
+    ap.add_argument("--stat", default="mean", choices=["mean", "median"])
     a = ap.parse_args(argv)
-    res = run_l1(a.hl3) if a.what == "l1" else run_l3(a.hl3) if a.what == "l3" else run_l2(a.curves)
+    res = run_l1(a.hl3, a.big, a.stat) if a.what == "l1" else run_l3(a.hl3) if a.what == "l3" else run_l2(a.curves)
     print(json.dumps(res, indent=1))
     if a.log:
         Registry(os.path.join(ROOT, "state", "registry.jsonl")).note(
