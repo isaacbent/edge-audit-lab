@@ -427,3 +427,29 @@ def test_realdata_parsers_and_summary_npmle():
     fut = mu + rng.normal(0, 0.2, 3000)
     dec = np.minimum((np.argsort(np.argsort(pp)) * 10) // 3000, 9)
     assert max(abs(pp[dec == k].mean() - (fut[dec == k] > 0).mean()) for k in range(10)) < 0.08
+
+
+def test_realtrades_hl_ostium_tilt_huber():
+    from edgelab import realtrades as rt
+    f = [{"time": 1, "coin": "BTC", "side": "B", "sz": "1", "px": "100", "closedPnl": "0", "fee": "0.1"},
+         {"time": 2, "coin": "BTC", "side": "B", "sz": "1", "px": "110", "closedPnl": "0", "fee": "0.1"},
+         {"time": 3, "coin": "BTC", "side": "A", "sz": "3", "px": "120", "closedPnl": "30", "fee": "0.1"},   # flip
+         {"time": 4, "coin": "BTC", "side": "B", "sz": "1", "px": "115", "closedPnl": "5", "fee": "0.1"},
+         {"time": 5, "coin": "ETH", "side": "A", "sz": "2", "px": "10", "closedPnl": "0", "fee": "0"},
+         {"time": 6, "coin": "ETH", "side": "B", "sz": "2", "px": "11", "closedPnl": "-2", "fee": "0"}]
+    t = rt.hl_trades(f)
+    assert [round(x[2], 2) for x in t] == [29.7, 4.9, -2.0]
+    assert [round(x[3], 1) for x in t] == [210.0, 120.0, 20.0]
+    o = [{"orderAction": "Open", "executedAt": 10, "collateral": "100000000", "profitPercent": "0"},
+         {"orderAction": "StopLoss", "executedAt": 20, "collateral": "100000000", "profitPercent": "-5000000"},
+         {"orderAction": "TopUp", "executedAt": 25, "collateral": "1"}]
+    ot = rt.ostium_trades(o)
+    assert len(ot) == 1 and ot[0][2] == pytest.approx(-5.0) and ot[0][3] == 100.0 and ot[0][0] == 20000
+    assert rt.r_scale([-1, -2, -3, -4]) is None and rt.r_scale([-1, -2, -3, -4, -5, 9]) == 3.0
+    tr = [(0, 10, -1.0, 1), (20, 30, 1.0, 1), (40, 50, 1.0, 1), (60, 70, -1.0, 1)]
+    al, aw = rt.tilt_counts(tr, window_ms=35)
+    assert list(al) == [2.0, 0.0] and list(aw) == [2.0, 1.0]
+    rng = np.random.default_rng(91)
+    r = rng.normal(0.01, 0.05, 400); r[:5] = 5.0
+    h = rt.huber_drift(r, np.ones(400))
+    assert abs(h["mu"] - 0.01) < 0.01 and r.mean() > 0.05 and h["se"] > 0
