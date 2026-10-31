@@ -54,3 +54,16 @@ EXCLUDED = no clear use on trader data (keep excluded unless a firm's question n
 | Deflated Sharpe ratio | Finance (Bailey, Lopez de Prado) | Correct for how many traders a firm evaluates | PLANNED (copy from the Research Engine) |
 | Moderated variance (Smyth 2004, limma) | Genomics | Shrink each trader's variance toward the population's, more for short records | TRIED (dev seeds 9400-9409, SKILL-08 exploration): too weak on heterogeneous traders (d0 about 3); dropped |
 | Style-pooled loss tail | Insurance (credibility by risk class) | Borrow the frequency / size of large losses from traders with a similar observed win rate, so a short record of a high win-rate trader is not trusted before its rare losses appear | CANDIDATE (the SKILL-07 failure mode; best tested on real firm data) |
+
+## Lab-invented candidates (2026-10-31, after REAL-01..06)
+Each needs exploration on development data first (HLS-01..04, Ostium: docs/DEV_DATA.md on funded-check), every attempt
+logged in the registry, then ONE pre-registered confirmation on the free holdout (~13,300 addresses; RSK-01 uses
+another 8,000). Status set by the user on 2026-10-31.
+
+| # | Formula | Case (firm question / why / what kills it) | Status |
+| --- | --- | --- | --- |
+| L1 | Tail debt: mu_adj = xbar - max(0, lambda_s * n - k) * L_s / n; k = the trader's large losses (< -2 R), lambda_s and L_s = frequency and mean size of large losses among peers of the same win-rate band | Is this short, bright record real? Charges high win-rate traders for rare losses not yet seen (the SKILL-07 failure); fills the report's 'hidden tail' blind spot (no breach probability for tail-risk accounts). Killed if it does not improve precision / tail-event prediction at 50-150 trades over the current score | APPROVED for exploration (1st) |
+| L2 | Regime gate: alert_i = t_rel_i * 1[rho_t > 0.1]; rho_t = cross-sectional rank correlation of relative drift between the two halves of the formation window | When can the laggard list be trusted? REAL-06 persistence vanished at the 2025-10 cut; the gate uses only pre-cut data. Killed if gated cuts do not show stronger persistence than ungated ones | APPROVED for exploration (2nd) |
+| L3 | First-passage breach: P = Phi((-B - mu T)/(s sqrt T)) + exp(-2 mu B / s^2) Phi((-B + mu T)/(s sqrt T)), mu = shrunk drift, B = real buffer | Interpretable breach probability per account. Precedent: barrier simulation on allTime curves badly calibrated (47-50 % predicted vs 84 %, AUC 0.54-0.61; docs/SIZING_EXPLORATORY.md on funded-check), likely uneven curve sampling; retry on daily P&L rebuilt from HLS-03 fills. Bar: AUC 0.87 (exploratory risk model, docs/PAYOUT_MODEL_EXPLORATORY.md) | APPROVED for exploration (3rd) |
+| L4 | Loss-chasing elasticity (size / frequency vs previous loss in R) | Similar 'discipline index' already showed no signal (docs/ALPHA_DISCIPLINE_EXPLORATORY.md) | NOT NOW |
+| L5 | Luck index S = (xbar - posterior mean) / se | Overlaps with 'past gains do not predict' (known) | NOT NOW (speculative) |
