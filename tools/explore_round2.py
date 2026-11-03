@@ -7,7 +7,9 @@ signals. Budget: at most 2 logged attempts each. Development data only; the hold
   python3 -m tools.explore_round2 a3 --hl3 DIR [--log --note TEXT]
 How each is judged is fixed here before any run: N1b on the reversal cuts seen in L2 (2025-01, 2025-02, 2025-09,
 2025-10, 2025-11) vs the other cuts; A5 by coverage of the 90 % interval month by month, per book; A3 by out-of-fold
-breach AUC gain over the levels (volatility, lag-1 autocorrelation). Aggregates only.
+breach AUC gain over the levels (volatility, lag-1 autocorrelation) and over the simple competitor log(vol last 30 d /
+vol previous 150 d). Pre-run fixes from the literature review (2026-11-03): N1b shrinks beta toward the cross-sectional
+mean (Vasicek), A5 adds Var(centre) and a t quantile, A3 uses 60-day windows. Aggregates only.
 """
 from __future__ import annotations
 
@@ -50,17 +52,22 @@ def day_of(ms):
 
 # ---------------------------------------------------------------- N1b
 def market_index(series):
-    """Daily market rate = median of r / dt over intervals of <= 3 days ending that day; cumulative sum by day."""
-    t1 = np.concatenate([s["t1"] for s in series]); r = np.concatenate([s["r"] for s in series])
-    dt = np.concatenate([s["dt"] for s in series])
-    m = (dt > 0) & (dt <= 3)
-    d, rate = day_of(t1[m]), r[m] / dt[m]
-    o = np.argsort(d, kind="mergesort"); d, rate = d[o], rate[o]
-    days, start = np.unique(d, return_index=True)
-    med = np.array([np.median(x) for x in np.split(rate, start[1:])])
-    d0, d1 = days.min(), days.max()
+    """Daily market rate = median, over all intervals covering the day (intervals of <= 14 days), of the interval's
+    mean daily rate r / dt; cumulative sum by day. (Fix after the first run: allTime curves are sparse in the past, so
+    an index built only from intervals of <= 3 days covered just the last 34 days.)"""
+    t0 = np.concatenate([s["t0"] for s in series]); t1 = np.concatenate([s["t1"] for s in series])
+    r = np.concatenate([s["r"] for s in series]); dt = np.concatenate([s["dt"] for s in series])
+    m = (dt > 0) & (dt <= 14)
+    a, b, rate = day_of(t0[m]) + 1, day_of(t1[m]), r[m] / dt[m]
+    n = np.maximum(b - a + 1, 1)
+    days = np.repeat(a, n) + (np.arange(n.sum()) - np.repeat(np.cumsum(n) - n, n))
+    rates = np.repeat(rate, n)
+    o = np.argsort(days, kind="mergesort"); days, rates = days[o], rates[o]
+    u, start_idx = np.unique(days, return_index=True)
+    med = np.array([np.median(x) for x in np.split(rates, start_idx[1:])])
+    d0, d1 = u.min(), u.max()
     full = np.zeros(d1 - d0 + 1)
-    full[days - d0] = med
+    full[u - d0] = med
     return d0, np.concatenate([[0.0], np.cumsum(full)])
 
 
@@ -109,7 +116,7 @@ def run_n1b(roots):
         b = np.array([x[2] for x in rows]); seb = np.array([x[3] for x in rows])
         true_var = max(float(np.var(b) - np.mean(seb ** 2)), 1e-12)
         wgt = true_var / (true_var + seb ** 2)
-        b_adj = wgt * b + (1 - wgt) * 1.0
+        b_adj = wgt * b + (1 - wgt) * float(np.mean(b))      # Vasicek: toward the cross-sectional mean (literature, pre-run fix)
         alpha, se_a = [], []
         for x, ba in zip(rows, b_adj):
             r, dt, M = x[4], x[5], x[6]
@@ -162,7 +169,8 @@ def run_a5(roots):
             centre = float(hist.mean())
             tau2 = max(0.0, float(np.var(hist, ddof=1) - np.mean(hse ** 2)))
             naive = 1.645 * SE[i - 1]
-            re = 1.645 * np.sqrt(tau2 + SE[i - 1] ** 2)
+            var_centre = (tau2 + float(np.mean(hse ** 2))) / len(hist)
+            re = float(_st.t.ppf(0.95, len(hist) - 1)) * np.sqrt(tau2 + SE[i - 1] ** 2 + var_centre)   # HTS / HKSJ style (pre-run fix)
             rows.append({"month": f"{months[i][0]}-{months[i][1]:02d}", "actual": round(float(P[i]), 5), "centre": round(centre, 5),
                          "in_naive": bool(abs(P[i] - centre) <= naive), "in_random_effects": bool(abs(P[i] - centre) <= re),
                          "half_naive": round(float(naive), 5), "half_re": round(float(re), 5)})
@@ -202,10 +210,10 @@ def run_a3(hl3):
     rows = ei.breach_outcomes(accts)
     feats, y = [], []
     for _, f, br in rows:
-        ends = range(30, 183, 10)
+        ends = range(60, 183, 5)                  # 60-day windows, step 5 (literature, pre-run fix)
         a1, lv = [], []
         for e in ends:
-            w = f[e - 30:e]
+            w = f[e - 60:e]
             if w.std() <= 0:
                 a1.append(np.nan); lv.append(np.nan); continue
             a1.append(ac1(w)); lv.append(np.log(w.var()))
@@ -214,14 +222,17 @@ def run_a3(hl3):
         if ok.sum() < 5:
             continue
         x = np.arange(len(a1))[ok]
-        feats.append([np.log(f.std() + 1e-12), ac1(f), np.polyfit(x, a1[ok], 1)[0], np.polyfit(x, lv[ok], 1)[0]])
+        ratio = np.log((f[-30:].std() + 1e-12) / (f[:-30].std() + 1e-12))
+        feats.append([np.log(f.std() + 1e-12), ac1(f), np.polyfit(x, a1[ok], 1)[0], np.polyfit(x, lv[ok], 1)[0], ratio])
         y.append(br)
     X, y = np.array(feats), np.array(y, dtype=float)
     ews = _st.zscore(X[:, 2]) + _st.zscore(X[:, 3])
     return {"accounts": len(y), "truncated_excluded": trunc, "breach_rate": round(float(y.mean()), 4),
             "auc_ews_alone": round(ei.auc(ews, y), 4), "auc_slope_ac1": round(ei.auc(X[:, 2], y), 4),
             "auc_slope_logvar": round(ei.auc(X[:, 3], y), 4), "auc_vol_level": round(ei.auc(X[:, 0], y), 4),
-            "oof_auc_levels": logistic_oof_auc(X[:, :2], y), "oof_auc_levels_plus_trends": logistic_oof_auc(X, y)}
+            "auc_vol_ratio_competitor": round(ei.auc(X[:, 4], y), 4),
+            "oof_auc_levels": logistic_oof_auc(X[:, :2], y), "oof_auc_levels_plus_trends": logistic_oof_auc(X[:, :4], y),
+            "oof_auc_levels_plus_competitor": logistic_oof_auc(X[:, [0, 1, 4]], y), "oof_auc_all": logistic_oof_auc(X, y)}
 
 
 def main(argv=None):
