@@ -67,3 +67,18 @@ another 8,000). Status set by the user on 2026-10-31.
 | L3 | First-passage breach: P = Phi((-B - mu T)/(s sqrt T)) + exp(-2 mu B / s^2) Phi((-B + mu T)/(s sqrt T)), mu = shrunk drift, B = real buffer | Interpretable breach probability per account. Precedent: barrier simulation on allTime curves badly calibrated (47-50 % predicted vs 84 %, AUC 0.54-0.61; docs/SIZING_EXPLORATORY.md on funded-check), likely uneven curve sampling; retry on daily P&L rebuilt from HLS-03 fills. Bar: AUC 0.87 (exploratory risk model, docs/PAYOUT_MODEL_EXPLORATORY.md) | TRIED and DROPPED (1 logged attempt, daily P&L from HLS-03 fills): mean calibration fixed (70 % predicted vs 66 % real) but AUC 0.70 = volatility alone, far below 0.87; over-confident at the extremes (bottom decile 1 % vs 20 %, top 98 % vs 81 %); drift adds nothing (own / shrunk / zero equal) |
 | L4 | Loss-chasing elasticity (size / frequency vs previous loss in R) | Similar 'discipline index' already showed no signal (docs/ALPHA_DISCIPLINE_EXPLORATORY.md) | NOT NOW |
 | L5 | Luck index S = (xbar - posterior mean) / se | Overlaps with 'past gains do not predict' (known) | NOT NOW (speculative) |
+
+## Round 2 (2026-11-03): cross-field candidates and improvements
+Budget set with the user: at most 3 formulas explored this round, at most 2 logged attempts each; every survivor is
+compared with volatility alone and, for risk, with the data owner's exploratory risk model (AUC 0.87-0.90).
+Full write-up shared with the user (edge-audit-formulas-v2.md).
+
+| # | Formula (field) | Case | Status |
+| --- | --- | --- | --- |
+| N1b | Market-adjusted alpha with shrunk beta (finance: Vasicek): r_i,j = a_i dt_j + b_i M_j + e; b_adj = w b + (1 - w), w = true var / (true var + se^2); score = peer-relative t of a_i | Laggards rebounded in market reversals (REAL-06, L2): they may be high-beta, not bad. Killed if, in reversal cuts, the bottom decile by alpha persists no better than by raw return | APPROVED (round 2) |
+| A5 | Random-effects prediction interval (medicine: DerSimonian-Laird): centre +- 1.645 sqrt(tau^2 + within-month se^2), tau^2 = between-month variance of the book's payout rate | PAYOUT-02 was centred but too narrow (77 % vs 90 %): one month cannot see month-to-month market variation. Killed if coverage does not reach 85-95 % | APPROVED (round 2) |
+| A3 | Early-warning signals of critical transitions (ecology: Scheffer): EWS = slope(lag-1 autocorrelation) + slope(log variance) over rolling windows | The risk model uses levels of volatility / autocorrelation; trends are new. Killed if no breach-AUC gain over the levels | APPROVED (round 2) |
+| A1 | Cure model (oncology) for breach | Fixes L3's over-confident extremes; overlaps the risk model's calibration | PARKED |
+| A2 | Hill tail index of losses (seismology / insurance) | Successor of L1; overlaps kurtosis in the risk model | PARKED |
+| A4 | Disposition effect (behavioural finance: Odean), holding time of losers / winners | A similar 'discipline index' showed no signal | PARKED |
+| A6 / N2b | Credibility-weighted cost, double-barrier closed form | Mainly commercial | PARKED |
